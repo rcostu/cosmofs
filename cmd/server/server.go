@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"cosmofs"
 	"flag"
+	"encoding/gob"
 	"log"
 	"net"
 	"os"
@@ -74,11 +76,20 @@ func main () {
 		}
 
 		if fi.IsDir() {
-			_, err := os.Lstat(filepath.Join(dir, ".cosmofs/config"))
+			configFileName := filepath.Join(dir, ".cosmofsconfig")
+			_, err := os.Lstat(configFileName)
 
 			if err != nil {
-				log.Printf("Error reading config file: %s", err)
+				log.Printf("Error config file does not exists: %s", err)
+
 				// Create the config file.
+				configFile, err := os.Create(configFileName)
+
+				if err != nil {
+					log.Printf("Error creating config file: %s", err)
+					continue
+				}
+
 				// Read the directory and include the files on it.
 				file, err := os.Open(dir)
 
@@ -94,12 +105,44 @@ func main () {
 					continue
 				}
 
-				for _, ent := range fi {
+				files := make([]*cosmofs.File, len(fi))
+
+				for i, ent := range fi {
 					log.Println(ent)
+					files[i] = &cosmofs.File{
+						Path: dir,
+						Filename: ent.Name(),
+					}
+					log.Println(files[i])
+				}
+
+				configEnc := gob.NewEncoder(configFile)
+				err = configEnc.Encode(files[0])
+
+				if err != nil {
+					log.Fatal("Error encoding config file: ", err)
 				}
 			}
 
 			// Decode the config file and update data structures.
+			configFile, err := os.Open(configFileName)
+
+			if err != nil {
+				log.Printf("Error opening config file: %s", err)
+				continue
+			}
+
+			configDec := gob.NewDecoder(configFile)
+
+			var decodedFiles *cosmofs.File = new(cosmofs.File)
+
+			err = configDec.Decode(decodedFiles)
+
+			if err != nil {
+				log.Fatal("Error decoding config file: ", err)
+			}
+
+			log.Printf("DECODED VALUES: %v", decodedFiles)
 		}
 	}
 
