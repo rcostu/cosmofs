@@ -63,17 +63,44 @@ func main () {
 	}
 
 	for _, dir := range sharedDirList {
-		log.Println(filepath.Clean(dir))
+		dir = filepath.Clean(dir)
+		log.Println(dir)
 
-		_, err := os.Lstat(filepath.Join(filepath.Clean(dir), ".cosmofs/config"))
+		fi, err := os.Lstat(dir);
 
 		if err != nil {
-			log.Printf("Error reading file: %s", err)
-			// Create the config file.
-			// Read the directory and include the files on it.
+			log.Printf("Error reading dir: %s - %s", dir, err)
+			continue
 		}
 
-		// Decode the config file and update data structures.
+		if fi.IsDir() {
+			_, err := os.Lstat(filepath.Join(dir, ".cosmofs/config"))
+
+			if err != nil {
+				log.Printf("Error reading config file: %s", err)
+				// Create the config file.
+				// Read the directory and include the files on it.
+				file, err := os.Open(dir)
+
+				if err != nil {
+					log.Printf("Error reading dir: %s - %s", dir, err)
+					continue
+				}
+
+				fi, err := file.Readdir(0)
+
+				if err != nil {
+					log.Printf("Error reading dir contents: %s - %s", dir, err)
+					continue
+				}
+
+				for _, ent := range fi {
+					log.Println(ent)
+				}
+			}
+
+			// Decode the config file and update data structures.
+		}
 	}
 
 	// Leave the process listening for other peers
