@@ -21,6 +21,11 @@ var (
 	sharedDirList []string = make([]string, len(filepath.SplitList(*cosmofsout)))
 )
 
+const (
+	COSMOFSDIR string = ".cosmofs"
+	COSMOFSCONFIGFILE string = ".cosmofsconfig"
+)
+
 // Handles petitions from the peers.
 func handlePetition (conn net.Conn) {
 	if *verbose {
@@ -76,7 +81,7 @@ func main () {
 		}
 
 		if fi.IsDir() {
-			configFileName := filepath.Join(dir, ".cosmofsconfig")
+			configFileName := filepath.Join(dir, COSMOFSCONFIGFILE)
 			_, err := os.Lstat(configFileName)
 
 			if err != nil {
