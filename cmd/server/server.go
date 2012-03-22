@@ -117,10 +117,19 @@ func main () {
 				}
 
 				configEnc := gob.NewEncoder(configFile)
-				err = configEnc.Encode(files[0])
+
+				err = configEnc.Encode(len(files))
 
 				if err != nil {
-					log.Fatal("Error encoding config file: ", err)
+					log.Fatal("Error encoding length config file: ", err)
+				}
+
+				for i := range files {
+					err = configEnc.Encode(files[i])
+				}
+
+				if err != nil {
+					log.Fatal("Error encoding list of files config file: ", err)
 				}
 			}
 
@@ -134,15 +143,26 @@ func main () {
 
 			configDec := gob.NewDecoder(configFile)
 
-			var decodedFiles *cosmofs.File = new(cosmofs.File)
+			var numFiles int
 
-			err = configDec.Decode(decodedFiles)
+			err = configDec.Decode(&numFiles)
 
 			if err != nil {
-				log.Fatal("Error decoding config file: ", err)
+				log.Fatal("Error decoding length config file: ", err)
 			}
 
-			log.Printf("DECODED VALUES: %v", decodedFiles)
+			log.Printf("DECODED LENGTH VALUE: %v", numFiles)
+
+			var decodedFiles []*cosmofs.File = make([]*cosmofs.File, numFiles)
+
+			for i := range decodedFiles {
+				decodedFiles[i] = new(cosmofs.File)
+				err = configDec.Decode(decodedFiles[i])
+				if err != nil {
+					log.Fatal("Error decoding list of files config file: ", err)
+				}
+				log.Printf("DECODED VALUES: %v", decodedFiles[i])
+			}
 		}
 	}
 
