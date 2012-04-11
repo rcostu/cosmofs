@@ -32,7 +32,6 @@ func handlePetition (conn net.Conn) {
 		log.Printf("Connection made from: %s\n", conn.RemoteAddr())
 	}
 
-
 	reader := bufio.NewReader(conn)
 
 	line, err := reader.ReadString('\n')
@@ -69,10 +68,12 @@ func main () {
 		log.Fatal("COSMOFSOUT should have at least one directory or file.")
 	}
 
+	// Shared directories are initialized
 	for _, dir := range sharedDirList {
 		dir = filepath.Clean(dir)
 		log.Println(dir)
 
+		// Check wether we can read the current directory
 		fi, err := os.Lstat(dir);
 
 		if err != nil {
@@ -80,6 +81,8 @@ func main () {
 			continue
 		}
 
+		// If it is a directory, look for the config file and decode it, or
+		// generate it if it does not already exists.
 		if fi.IsDir() {
 			configFileName := filepath.Join(dir, COSMOFSCONFIGFILE)
 			_, err := os.Lstat(configFileName)
@@ -168,7 +171,9 @@ func main () {
 				}
 				log.Printf("DECODED VALUES: %v", decodedFiles[i])
 			}
-		}
+		} // IsDir()
+
+		// TODO: What if it is a file?? 
 	}
 
 	// Leave the process listening for other peers
