@@ -13,6 +13,8 @@ var (
 )
 
 func main () {
+	flag.Parse()
+
 	conn, err := net.Dial("tcp", "localhost:5453")
 
 	if err != nil {
@@ -20,6 +22,7 @@ func main () {
 	}
 
 	if *list {
+		fmt.Printf("List directories\n")
 		fmt.Fprintf(conn, "List\n")
 	}
 	conn.Close()
