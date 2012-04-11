@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -40,7 +41,16 @@ func handlePetition (conn net.Conn) {
 		log.Printf("Error reading connection: %s", err)
 	}
 
+	line = strings.TrimRight(line, "\n")
+
 	log.Println(line)
+
+	// Listing directories
+	if line == "List" {
+		log.Printf("List directories from: %s\n", conn.RemoteAddr())
+
+		
+	}
 }
 
 func main () {
