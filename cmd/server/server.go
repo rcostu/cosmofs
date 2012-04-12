@@ -20,6 +20,8 @@ var (
 
 	// Shared Directory List
 	sharedDirList []string = make([]string, len(filepath.SplitList(*cosmofsout)))
+	// Shared Files List
+	sharedFileList map[string] []*cosmofs.File = make(map[string] []*cosmofs.File)
 )
 
 const (
@@ -27,29 +29,68 @@ const (
 	COSMOFSCONFIGFILE string = ".cosmofsconfig"
 )
 
+func debug (format string, v ...interface{}) {
+	if *verbose {
+		log.Printf(format, v)
+	}
+}
+
 // Handles petitions from the peers.
 func handlePetition (conn net.Conn) {
-	if *verbose {
-		log.Printf("Connection made from: %s\n", conn.RemoteAddr())
-	}
+	debug("Connection made from: %s\n", conn.RemoteAddr())
 
 	reader := bufio.NewReader(conn)
 
 	line, err := reader.ReadString('\n')
 
 	if err != nil {
-		log.Printf("Error reading connection: %s", err)
+		debug("Error reading connection: %s", err)
+		return
 	}
 
 	line = strings.TrimRight(line, "\n")
 
-	log.Println(line)
-
 	// Listing directories
 	if line == "List" {
-		log.Printf("List directories from: %s\n", conn.RemoteAddr())
+		debug("List directories from: %s\n", conn.RemoteAddr())
 
-		
+		configEnc := gob.NewEncoder(conn)
+
+		// Send the number of shared directories
+		err = configEnc.Encode(len(sharedFileList))
+
+		if err != nil {
+			log.Fatal("Error sending length of files: ", err)
+		}
+
+		debug("%d directories shared", len(sharedFileList))
+
+		// For each directory some data is sent to the client
+		for dir, files := range sharedFileList {
+			// Send the number of files in the current directory
+			err = configEnc.Encode(len(files))
+			if err != nil {
+				log.Fatal("%d files found on directory: ", len(files))
+			}
+
+			// Send directory name
+			err = configEnc.Encode(dir)
+
+			if err != nil {
+				log.Fatal("Error sending dir of files: ", err)
+			}
+
+			debug("Sent directory %s", dir)
+
+			// Send each one of the file names
+			for _, file := range files {
+				err = configEnc.Encode(file)
+				if err != nil {
+					log.Fatal("Error sending file: ", err)
+				}
+				debug("Sent file: %s", file)
+			}
+		}
 	}
 }
 
@@ -66,9 +107,7 @@ func main () {
 		log.Fatalf("COSMOFSIN not set correctly. Current content <%s>", *cosmofsin)
 	}
 
-	if *verbose {
-		log.Printf("Inbound files arriving to %s", *cosmofsin)
-	}
+	debug("Inbound files arriving to %s", *cosmofsin)
 
 	// Initialize sharedDirList
 	sharedDirList = filepath.SplitList(*cosmofsout)
@@ -81,13 +120,13 @@ func main () {
 	// Shared directories are initialized
 	for _, dir := range sharedDirList {
 		dir = filepath.Clean(dir)
-		log.Println(dir)
+		debug("%s", dir)
 
 		// Check wether we can read the current directory
 		fi, err := os.Lstat(dir);
 
 		if err != nil {
-			log.Printf("Error reading dir: %s - %s", dir, err)
+			debug("Error reading dir: %s - %s", dir, err)
 			continue
 		}
 
@@ -98,13 +137,13 @@ func main () {
 			_, err := os.Lstat(configFileName)
 
 			if err != nil {
-				log.Printf("Error config file does not exists: %s", err)
+				debug("Error config file does not exists: %s", err)
 
 				// Create the config file.
 				configFile, err := os.Create(configFileName)
 
 				if err != nil {
-					log.Printf("Error creating config file: %s", err)
+					debug("Error creating config file: %s", err)
 					continue
 				}
 
@@ -112,26 +151,26 @@ func main () {
 				file, err := os.Open(dir)
 
 				if err != nil {
-					log.Printf("Error reading dir: %s - %s", dir, err)
+					debug("Error reading dir: %s - %s", dir, err)
 					continue
 				}
 
 				fi, err := file.Readdir(0)
 
 				if err != nil {
-					log.Printf("Error reading dir contents: %s - %s", dir, err)
+					debug("Error reading dir contents: %s - %s", dir, err)
 					continue
 				}
 
 				files := make([]*cosmofs.File, len(fi))
 
 				for i, ent := range fi {
-					log.Println(ent)
+					debug("%s",ent)
 					files[i] = &cosmofs.File{
 						Path: dir,
 						Filename: ent.Name(),
 					}
-					log.Println(files[i])
+					debug("%s", files[i])
 				}
 
 				configEnc := gob.NewEncoder(configFile)
@@ -144,10 +183,9 @@ func main () {
 
 				for i := range files {
 					err = configEnc.Encode(files[i])
-				}
-
-				if err != nil {
-					log.Fatal("Error encoding list of files config file: ", err)
+					if err != nil {
+						log.Fatal("Error encoding list of files config file: ", err)
+					}
 				}
 			}
 
@@ -155,7 +193,7 @@ func main () {
 			configFile, err := os.Open(configFileName)
 
 			if err != nil {
-				log.Printf("Error opening config file: %s", err)
+				debug("Error opening config file: %s", err)
 				continue
 			}
 
@@ -169,17 +207,19 @@ func main () {
 				log.Fatal("Error decoding length config file: ", err)
 			}
 
-			log.Printf("DECODED LENGTH VALUE: %v", numFiles)
+			debug("DECODED LENGTH VALUE: %v", numFiles)
 
-			var decodedFiles []*cosmofs.File = make([]*cosmofs.File, numFiles)
+			var decodedFile *cosmofs.File
+			sharedFileList[dir] = make([]*cosmofs.File, numFiles)
 
-			for i := range decodedFiles {
-				decodedFiles[i] = new(cosmofs.File)
-				err = configDec.Decode(decodedFiles[i])
+			for i := 0; i < numFiles; i++ {
+				decodedFile = new(cosmofs.File)
+				err = configDec.Decode(decodedFile)
 				if err != nil {
 					log.Fatal("Error decoding list of files config file: ", err)
 				}
-				log.Printf("DECODED VALUES: %v", decodedFiles[i])
+				sharedFileList[dir][i] = decodedFile
+				debug("DECODED VALUES: %v", sharedFileList[dir][i])
 			}
 		} // IsDir()
 
@@ -190,17 +230,15 @@ func main () {
 	ln, err := net.Listen("tcp", ":5453")
 
 	if err != nil {
-		log.Printf("Error: %s\n", err)
+		debug("Error: %s\n", err)
 	}
 
-	if *verbose {
-		log.Println("Listening on address ", ln.Addr())
-	}
+	debug("Listening on address ", ln.Addr())
 
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			log.Printf("Error: %s\n", err)
+			debug("Error: %s\n", err)
 			continue
 		}
 		go handlePetition(conn)
