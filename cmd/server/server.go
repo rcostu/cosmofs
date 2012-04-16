@@ -162,15 +162,17 @@ func main () {
 					continue
 				}
 
-				files := make([]*cosmofs.File, len(fi))
+				files := make([]*cosmofs.File, 0)
 
-				for i, ent := range fi {
-					debug("%s",ent)
-					files[i] = &cosmofs.File{
+				for _, ent := range fi {
+					if strings.HasPrefix(ent.Name(), ".") {
+						continue
+					}
+					debug("%s",ent.Name())
+					files = append(files, &cosmofs.File{
 						Path: dir,
 						Filename: ent.Name(),
-					}
-					debug("%s", files[i])
+					})
 				}
 
 				configEnc := gob.NewEncoder(configFile)
