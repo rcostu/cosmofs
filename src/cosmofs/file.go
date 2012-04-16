@@ -9,6 +9,7 @@ type chunk struct {
 type File struct {
 	Path string
 	Filename string
+	Size int64
 	Chunks []chunk
 	NumChunks bool
 	MaintainChunks bool
