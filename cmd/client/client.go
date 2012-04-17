@@ -11,7 +11,12 @@ import (
 
 var (
 	verbose *bool = flag.Bool("v", false, "Verbose mode")
-	list *bool = flag.Bool("l", false, "List directories")
+	list_dirs *bool = flag.Bool("l", false, "List directories")
+	list_dir *string = flag.String("L", "", "List directory")
+)
+
+const (
+	PORT string = "5453"
 )
 
 func debug (format string, v ...interface{}) {
@@ -23,17 +28,23 @@ func debug (format string, v ...interface{}) {
 func main () {
 	flag.Parse()
 
-	conn, err := net.Dial("tcp", "localhost:5453")
+	if flag.NArg() < 1 {
+		log.Fatal("A server must be specified")
+	}
+
+	conn, err := net.Dial("tcp", flag.Arg(0) + ":" + PORT)
+	defer conn.Close()
 
 	if err != nil {
 		log.Fatalf("Error: %s\n", err)
 	}
 
-	if *list {
-		fmt.Printf("List directories\n")
-		fmt.Fprintf(conn, "List\n")
+	var decodedFiles map[string] []*cosmofs.File = make(map[string] []*cosmofs.File)
+	configDec := gob.NewDecoder(conn)
 
-		configDec := gob.NewDecoder(conn)
+	if *list_dirs {
+		fmt.Printf("List directories\n")
+		fmt.Fprintf(conn, "List Directories\n")
 
 		var numDirs, numFiles int
 
@@ -45,7 +56,6 @@ func main () {
 
 		debug("DECODED LENGTH VALUE: %v", numDirs)
 
-		var decodedFiles map[string] []*cosmofs.File = make(map[string] []*cosmofs.File)
 		var dir string
 
 		for numDirs > 0 {
@@ -83,5 +93,4 @@ func main () {
 			numDirs--
 		}
 	}
-	conn.Close()
 }
