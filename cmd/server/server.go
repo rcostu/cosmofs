@@ -17,6 +17,7 @@ var (
 	verbose *bool = flag.Bool("v", false, "Verbose output ON")
 	cosmofsin *string = flag.String("cosmofsin", os.Getenv("COSMOFSIN"), "Location of incoming packages")
 	cosmofsout *string = flag.String("cosmofsout", os.Getenv("COSMOFSOUT"), "Location of shared directories")
+	resetConfig *bool = flag.Bool("r", false, "Re-generate config files")
 
 	// Shared Directory List
 	sharedDirList []string = make([]string, len(filepath.SplitList(*cosmofsout)))
@@ -51,46 +52,47 @@ func handlePetition (conn net.Conn) {
 	line = strings.TrimRight(line, "\n")
 
 	// Listing directories
-	if line == "List" {
-		debug("List directories from: %s\n", conn.RemoteAddr())
+	switch line {
+		case "List Directories":
+			debug("List directories from: %s\n", conn.RemoteAddr())
 
-		configEnc := gob.NewEncoder(conn)
+			configEnc := gob.NewEncoder(conn)
 
-		// Send the number of shared directories
-		err = configEnc.Encode(len(sharedFileList))
-
-		if err != nil {
-			log.Fatal("Error sending length of files: ", err)
-		}
-
-		debug("%d directories shared", len(sharedFileList))
-
-		// For each directory some data is sent to the client
-		for dir, files := range sharedFileList {
-			// Send the number of files in the current directory
-			err = configEnc.Encode(len(files))
-			if err != nil {
-				log.Fatal("%d files found on directory: ", len(files))
-			}
-
-			// Send directory name
-			err = configEnc.Encode(dir)
+			// Send the number of shared directories
+			err = configEnc.Encode(len(sharedFileList))
 
 			if err != nil {
-				log.Fatal("Error sending dir of files: ", err)
+				log.Fatal("Error sending length of files: ", err)
 			}
 
-			debug("Sent directory %s", dir)
+			debug("%d directories shared", len(sharedFileList))
 
-			// Send each one of the file names
-			for _, file := range files {
-				err = configEnc.Encode(file)
+			// For each directory some data is sent to the client
+			for dir, files := range sharedFileList {
+				// Send the number of files in the current directory
+				err = configEnc.Encode(len(files))
 				if err != nil {
-					log.Fatal("Error sending file: ", err)
+					log.Fatal("%d files found on directory: ", len(files))
 				}
-				debug("Sent file: %s", file)
+
+				// Send directory name
+				err = configEnc.Encode(dir)
+
+				if err != nil {
+					log.Fatal("Error sending dir of files: ", err)
+				}
+
+				debug("Sent directory %s", dir)
+
+				// Send each one of the file names
+				for _, file := range files {
+					err = configEnc.Encode(file)
+					if err != nil {
+						log.Fatal("Error sending file: ", err)
+					}
+					debug("Sent file: %s", file)
+				}
 			}
-		}
 	}
 }
 
@@ -134,6 +136,18 @@ func main () {
 		// generate it if it does not already exists.
 		if fi.IsDir() {
 			configFileName := filepath.Join(dir, COSMOFSCONFIGFILE)
+
+			if *resetConfig {
+				_, err := os.Lstat(configFileName)
+
+				if err == nil {
+					err := os.Remove(configFileName)
+					if err != nil {
+						log.Fatal("Error re-generating config files.")
+					}
+				}
+			}
+
 			_, err := os.Lstat(configFileName)
 
 			if err != nil {
