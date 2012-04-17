@@ -10,6 +10,7 @@ type File struct {
 	Path string
 	Filename string
 	Size int64
+	//Owner peer.Peer
 	Chunks []chunk
 	NumChunks bool
 	MaintainChunks bool
@@ -19,7 +20,3 @@ type File struct {
 	Backup bool
 }
 
-type Directory struct {
-	File
-	Recursive bool
-}
