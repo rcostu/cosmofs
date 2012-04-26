@@ -46,11 +46,6 @@ var (
 	sharedFileList map[string] []*cosmofs.File = make(map[string] []*cosmofs.File)
 )
 
-const (
-	COSMOFSDIR string = ".cosmofs"
-	COSMOFSCONFIGFILE string = ".cosmofsconfig"
-)
-
 func debug (format string, v ...interface{}) {
 	if *verbose {
 		log.Printf(format, v)
@@ -220,6 +215,8 @@ func main () {
 	if _, err := os.Lstat(*cosmofsin); err != nil {
 		log.Fatalf("COSMOFSIN not set correctly. Current content <%s>", *cosmofsin)
 	}
+
+	cosmofs.Cosmofsin = *cosmofsin
 
 	debug("Inbound files arriving to %s", *cosmofsin)
 
