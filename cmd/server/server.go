@@ -91,6 +91,7 @@ func createConfigFile(dir, configFileName string) (ok bool, err error) {
 		files = append(files, &cosmofs.File{
 			Path: dir,
 			Filename: ent.Name(),
+			Size: ent.Size(),
 		})
 	}
 
@@ -271,7 +272,7 @@ func main () {
 			}
 
 			// Decode the config file and update data structures.
-			_, err := decodeConfigFile(dir, configFileName)
+			_, err = decodeConfigFile(dir, configFileName)
 			if err != nil {
 				continue
 			}
