@@ -57,6 +57,96 @@ func debug (format string, v ...interface{}) {
 	}
 }
 
+func createConfigFile(dir, configFileName string) (ok bool, err error) {
+	// Create the config file.
+	configFile, err := os.Create(configFileName)
+
+	if err != nil {
+		debug("Error creating config file: %s", err)
+		return false, err
+	}
+
+	// Read the directory and include the files on it.
+	file, err := os.Open(dir)
+
+	if err != nil {
+		debug("Error reading dir: %s - %s", dir, err)
+		return false, err
+	}
+
+	fi, err := file.Readdir(0)
+
+	if err != nil {
+		debug("Error reading dir contents: %s - %s", dir, err)
+		return false, err
+	}
+
+	files := make([]*cosmofs.File, 0)
+
+	for _, ent := range fi {
+		if strings.HasPrefix(ent.Name(), ".") {
+			continue
+		}
+		debug("%s",ent.Name())
+		files = append(files, &cosmofs.File{
+			Path: dir,
+			Filename: ent.Name(),
+		})
+	}
+
+	configEnc := gob.NewEncoder(configFile)
+
+	err = configEnc.Encode(len(files))
+
+	if err != nil {
+		log.Fatal("Error encoding length config file: ", err)
+	}
+
+	for i := range files {
+		err = configEnc.Encode(files[i])
+		if err != nil {
+			log.Fatal("Error encoding list of files config file: ", err)
+		}
+	}
+
+	return true, nil
+}
+
+func decodeConfigFile(dir, configFileName string) (ok bool, err error){
+	configFile, err := os.Open(configFileName)
+
+	if err != nil {
+		debug("Error opening config file: %s", err)
+		return false, nil
+	}
+
+	configDec := gob.NewDecoder(configFile)
+
+	var numFiles int
+
+	err = configDec.Decode(&numFiles)
+
+	if err != nil {
+		log.Fatal("Error decoding length config file: ", err)
+	}
+
+	debug("DECODED LENGTH VALUE: %v", numFiles)
+
+	var decodedFile *cosmofs.File
+	sharedFileList[dir] = make([]*cosmofs.File, numFiles)
+
+	for i := 0; i < numFiles; i++ {
+		decodedFile = new(cosmofs.File)
+		err = configDec.Decode(decodedFile)
+		if err != nil {
+			log.Fatal("Error decoding list of files config file: ", err)
+		}
+		sharedFileList[dir][i] = decodedFile
+		debug("DECODED VALUES: %v", sharedFileList[dir][i])
+	}
+	return true, nil
+}
+
 // Handles petitions from the peers.
 func handlePetition (conn net.Conn) {
 	debug("Connection made from: %s\n", conn.RemoteAddr())
@@ -173,94 +263,21 @@ func main () {
 
 			if err != nil {
 				debug("Error config file does not exists: %s", err)
-
-				// Create the config file.
-				configFile, err := os.Create(configFileName)
+				_, err := createConfigFile(dir, configFileName)
 
 				if err != nil {
-					debug("Error creating config file: %s", err)
 					continue
-				}
-
-				// Read the directory and include the files on it.
-				file, err := os.Open(dir)
-
-				if err != nil {
-					debug("Error reading dir: %s - %s", dir, err)
-					continue
-				}
-
-				fi, err := file.Readdir(0)
-
-				if err != nil {
-					debug("Error reading dir contents: %s - %s", dir, err)
-					continue
-				}
-
-				files := make([]*cosmofs.File, 0)
-
-				for _, ent := range fi {
-					if strings.HasPrefix(ent.Name(), ".") {
-						continue
-					}
-					debug("%s",ent.Name())
-					files = append(files, &cosmofs.File{
-						Path: dir,
-						Filename: ent.Name(),
-					})
-				}
-
-				configEnc := gob.NewEncoder(configFile)
-
-				err = configEnc.Encode(len(files))
-
-				if err != nil {
-					log.Fatal("Error encoding length config file: ", err)
-				}
-
-				for i := range files {
-					err = configEnc.Encode(files[i])
-					if err != nil {
-						log.Fatal("Error encoding list of files config file: ", err)
-					}
 				}
 			}
 
 			// Decode the config file and update data structures.
-			configFile, err := os.Open(configFileName)
-
+			_, err := decodeConfigFile(dir, configFileName)
 			if err != nil {
-				debug("Error opening config file: %s", err)
 				continue
 			}
+		}
 
-			configDec := gob.NewDecoder(configFile)
-
-			var numFiles int
-
-			err = configDec.Decode(&numFiles)
-
-			if err != nil {
-				log.Fatal("Error decoding length config file: ", err)
-			}
-
-			debug("DECODED LENGTH VALUE: %v", numFiles)
-
-			var decodedFile *cosmofs.File
-			sharedFileList[dir] = make([]*cosmofs.File, numFiles)
-
-			for i := 0; i < numFiles; i++ {
-				decodedFile = new(cosmofs.File)
-				err = configDec.Decode(decodedFile)
-				if err != nil {
-					log.Fatal("Error decoding list of files config file: ", err)
-				}
-				sharedFileList[dir][i] = decodedFile
-				debug("DECODED VALUES: %v", sharedFileList[dir][i])
-			}
-		} // IsDir()
-
-		// TODO: What if it is a file?? 
+		// TODO: What if it is a file??
 	}
 
 	// Leave the process listening for other peers
