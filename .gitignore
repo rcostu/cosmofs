@@ -1,2 +1,4 @@
 *.swp
 *.a
+cmd/client/client
+cmd/server/server
