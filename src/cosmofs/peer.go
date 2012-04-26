@@ -21,23 +21,11 @@ along with Cosmofs.  If not, see <http://www.gnu.org/licenses/>.
 
 package cosmofs
 
-type chunk struct {
+import (
+	ssh "code.google.com/p/go.crypto/ssh"
+)
+
+type Peer struct {
+	Key ssh.AgentKey
 	Name string
-	RemPath string
-	//peer peer.Peer
 }
-
-type File struct {
-	Path string
-	Filename string
-	Size int64
-	//Owner peer.Peer
-	Chunks []chunk
-	NumChunks bool
-	MaintainChunks bool
-	Online bool
-	KeepCopy bool
-	Public bool
-	Backup bool
-}
-

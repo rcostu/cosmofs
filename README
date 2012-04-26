@@ -1,5 +1,11 @@
-Repositorio del Proyecto de Sistemas Informáticos: Creación de un sistema de
-ficheros distribuido P2P escrito en Go.
+Cosmofs is a new P2P filesystem written in Go.
 
-Autor:
+This project is developed for the "Sistemas Informáticos" course at Facultad de
+Informática - Universidad Politécnica de Madrid.
+
+Cosmofs is released as free software following a GPLv3 license as it is noticed
+in COPYING file.
+
+Author:
 	Roberto Costumero Moreno <roberto@costumero.es>
+
