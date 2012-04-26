@@ -39,5 +39,6 @@ type File struct {
 	KeepCopy bool
 	Public bool
 	Backup bool
+	IsDir bool
 }
 
