@@ -89,15 +89,13 @@ func main () {
 	//conn, err := net.Dial("tcp", flag.Arg(0) + ":" + PORT)
 
 	conn, err := net.DialTCP("tcp", nil, &net.TCPAddr{
-		IP:		net.IPv4(10,0,0,255),
+		IP:		net.IPv4(127,0,0,1),
 		Port:	5453,
 	})
 
 	if err != nil {
 		log.Fatalf("Error: %s\n", err)
 	}
-
-	fmt.Println(conn.RemoteAddr())
 
 	defer conn.Close()
 
@@ -106,7 +104,12 @@ func main () {
 
 	if *list_dirs {
 		fmt.Printf("List directories\n")
-		fmt.Fprintf(conn, "List Directories\n")
+		//fmt.Fprintf(conn, "List Directories\n")
+		_, err = conn.Write([]byte("List Directories\n"))
+
+		if err != nil {
+			log.Fatalf("Error: %s\n", err)
+		}
 
 		var numDirs, numFiles int
 
