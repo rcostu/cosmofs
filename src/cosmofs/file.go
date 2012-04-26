@@ -24,14 +24,14 @@ package cosmofs
 type chunk struct {
 	Name string
 	RemPath string
-	//peer peer.Peer
+	peer Peer
 }
 
 type File struct {
 	Path string
 	Filename string
 	Size int64
-	//Owner peer.Peer
+	Owner Peer
 	Chunks []chunk
 	NumChunks bool
 	MaintainChunks bool
