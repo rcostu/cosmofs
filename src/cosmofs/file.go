@@ -28,7 +28,8 @@ type chunk struct {
 }
 
 type File struct {
-	Path string
+	localPath string
+	GlobalPath string
 	Filename string
 	Size int64
 	Owner Peer
