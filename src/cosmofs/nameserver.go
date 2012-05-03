@@ -25,6 +25,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -50,13 +51,13 @@ func (t IDTable) AddID (id string) {
 	}
 }
 
-func (t IDTable) AddDir (id, dir, baseDir string, recursive bool) {
+func (t IDTable) AddDir (id, dir, baseDir string, recursive bool) (err error) {
 	// Read the directory and include the files on it.
 	fi, err := os.Lstat(dir)
 
 	if err != nil {
 		log.Printf("Error reading dir: %s - %s", dir, err)
-		return
+		return err
 	}
 
 	if fi.IsDir() {
@@ -64,18 +65,18 @@ func (t IDTable) AddDir (id, dir, baseDir string, recursive bool) {
 
 		if err != nil {
 			log.Printf("Error reading dir: %s - %s", dir, err)
-			return
+			return err
 		}
 
 		fi, err := file.Readdir(0)
 
 		if err != nil {
 			log.Printf("Error reading dir contents: %s - %s", dir, err)
-			return
+			return err
 		}
 
 		files := make(FileList, 0)
-		globalBaseDir := filepath.Join(id, baseDir)
+		//globalBaseDir := filepath.Join(id, baseDir)
 
 		for _, ent := range fi {
 			if strings.HasPrefix(ent.Name(), ".") {
@@ -96,8 +97,11 @@ func (t IDTable) AddDir (id, dir, baseDir string, recursive bool) {
 		}
 
 		t.AddID(id)
-		t[id][globalBaseDir] = files
+		t[id][baseDir] = files
+
+		return err
 	}
+	return &NameServerError{}
 }
 
 func (t IDTable) ListIDs() (ids []string, err error) {
@@ -113,7 +117,7 @@ func (t IDTable) ListIDs() (ids []string, err error) {
 func (t IDTable) ListDirs(id string) (dirs []string, err error) {
 	if v, ok := t[id]; ok {
 		for k := range v {
-			dirs = append(dirs, k)
+			dirs = append(dirs, filepath.Join(id, k))
 		}
 		return dirs, err
 	}
@@ -124,7 +128,7 @@ func (t IDTable) ListDir (id, dir string) (content []string, err error) {
 	if _, ok := t[id]; ok {
 		if _, ok := t[id][dir]; ok {
 			for _, file := range t[id][dir] {
-				content = append(content, file.Filename)
+				content = append(content, filepath.Join(id, dir, file.Filename))
 			}
 			return content, err
 		}
@@ -141,14 +145,101 @@ func (t IDTable) IDExists (id string) (i string, err error) {
 
 func (t IDTable) SearchDir (dir string) (result []string, err error) {
 	if len(t) > 0 {
+		found := false
 		for k, v := range t {
 			for d := range v {
 				if strings.Contains(d, dir) {
 					result = append(result, filepath.Join(k,d))
+					found = true
 				}
 			}
 		}
-		return result, err
+		if found {
+			return result, err
+		}
 	}
 	return result, &NameServerError{}
+}
+
+func (t IDTable) SearchFile (name string) (result []string, err error) {
+	if len(t) > 0 {
+		found := false
+		for k, v := range t {
+			for d, files := range v {
+				for _, file := range files {
+					if strings.Contains(file.Filename, name) && !file.IsDir {
+						result = append(result, filepath.Join(k,d,file.Filename))
+						found = true
+					}
+				}
+			}
+		}
+		if found {
+			return result, err
+		}
+	}
+	return result, &NameServerError{}
+}
+
+func (t IDTable) Search (s string) (result []string, err error) {
+	res1, err := t.SearchDir(s)
+
+	if err != nil {
+		return result, err
+	}
+
+	res2, err := t.SearchFile(s)
+
+	if err != nil {
+		return result, err
+	}
+
+	result = make([]string, len(res1) + len(res2))
+	copy(result, res1)
+	copy(result[len(res1):], res2)
+
+	return result, err
+}
+
+func (t IDTable) DeleteID (id string) {
+	delete (t, id)
+}
+
+func (t IDTable) DeleteDir (id, dir string) {
+	if _, ok := t[id]; ok {
+		if _, ok := t[id][dir]; ok {
+			delete(t[id], dir)
+			if len(t[id]) == 0 {
+				t.DeleteID(id)
+			}
+		}
+	}
+}
+
+func checkID (id string) (err error) {
+	mailregexp, err := regexp.Compile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$`)
+
+	if err != nil {
+		return err
+	}
+
+	if mailregexp.MatchString(id) {
+		return err
+	}
+
+	return &NameServerError{}
+}
+
+func SplitPath (path string) (id, dir string, err error) {
+	res := strings.SplitN(path, "/", 2)
+
+	if len(res) != 2 {
+		return id, dir, &NameServerError{}
+	}
+
+	if err := checkID(res[0]); err != nil {
+		return id, dir, &NameServerError{}
+	}
+
+	return res[0], res[1], err
 }
