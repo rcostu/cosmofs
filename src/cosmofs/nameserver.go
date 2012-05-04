@@ -45,12 +45,15 @@ var (
 	Table IDTable = make(IDTable)
 )
 
+// TODO: Do not add duplicate IDs
+// TODO: Check ID correctness
 func (t IDTable) AddID (id string) {
 	if _, ok := t[id]; !ok {
 		t[id] = make(DirTable)
 	}
 }
 
+// TODO: Do not add duplicate dirs
 func (t IDTable) AddDir (id, dir, baseDir string, recursive bool) (err error) {
 	// Read the directory and include the files on it.
 	fi, err := os.Lstat(dir)
