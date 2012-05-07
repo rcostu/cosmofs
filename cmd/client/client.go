@@ -99,7 +99,6 @@ func main () {
 
 	defer conn.Close()
 
-	var decodedFiles map[string] []*cosmofs.File = make(map[string] []*cosmofs.File)
 	configDec := gob.NewDecoder(conn)
 
 	if *list_dirs {
@@ -111,51 +110,20 @@ func main () {
 			log.Fatalf("Error: %s\n", err)
 		}
 
-		var numDirs, numFiles int
-
-		err = configDec.Decode(&numDirs)
+		err = configDec.Decode(&cosmofs.Table)
 
 		if err != nil {
-			log.Fatal("Error decoding length config file: ", err)
+			log.Fatal("Error decoding table: ", err)
 		}
 
-		debug("DECODED LENGTH VALUE: %v", numDirs)
+		dirs, err := cosmofs.Table.ListAllDirs()
 
-		var dir string
+		if err != nil {
+			log.Printf("Error reading dirs %s", err)
+		}
 
-		for numDirs > 0 {
-			err = configDec.Decode(&numFiles)
-
-			if err != nil {
-				log.Fatal("Error decoding length config file: ", err)
-			}
-
-			debug("DECODED NUM FILES VALUE: %v", numFiles)
-
-			err = configDec.Decode(&dir)
-
-			if err != nil {
-				log.Fatal("Error decoding length config file: ", err)
-			}
-
-			debug("DECODED DIR NAME VALUE: %v", dir)
-			fmt.Println("d: " + dir)
-
-			var decodedFile *cosmofs.File
-			decodedFiles[dir] = make([]*cosmofs.File, numFiles)
-
-			for i := 0; i < numFiles; i++ {
-				decodedFile = new(cosmofs.File)
-				err = configDec.Decode(decodedFile)
-				if err != nil {
-					log.Fatal("Error decoding list of files config file: ", err)
-				}
-				decodedFiles[dir][i] = decodedFile
-				debug("DECODED VALUES: %v", decodedFiles[dir][i])
-				fmt.Println("--- " + decodedFile.Filename)
-			}
-
-			numDirs--
+		for _, v := range dirs {
+			fmt.Println(v)
 		}
 	}
 }
