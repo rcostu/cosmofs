@@ -22,6 +22,7 @@ along with Cosmofs.  If not, see <http://www.gnu.org/licenses/>.
 package cosmofs
 
 import (
+	"encoding/gob"
 	"log"
 	"os"
 	"path/filepath"
@@ -33,6 +34,7 @@ type FileList []*File
 type DirTable map[string]FileList
 type IDTable map[string]DirTable
 
+// TODO: Multiple different kinds of errors
 type NameServerError struct {
 	e error
 }
@@ -43,18 +45,106 @@ func (e *NameServerError) Error() string {
 
 var (
 	Table IDTable = make(IDTable)
+	myID = "roberto@costumero.es"
 )
 
-// TODO: Do not add duplicate IDs
-// TODO: Check ID correctness
-func (t IDTable) AddID (id string) {
-	if _, ok := t[id]; !ok {
-		t[id] = make(DirTable)
+func init() {
+	// Check if COSMOFSIN environment is set
+	if *Cosmofsin == "" {
+		log.Fatalf("COSMOFSIN not set correctly. Current content <%s>", *Cosmofsin)
+	}
+
+	// Check if COSMOFSIN is a correct directory
+	if _, err := os.Lstat(*Cosmofsin); err != nil {
+		log.Fatalf("COSMOFSIN not set correctly. Current content <%s>", *Cosmofsin)
+	}
+
+	sharedDirList := filepath.SplitList(*Cosmofsout)
+
+	// There shall be at least one shared directory
+	if len(sharedDirList) == 0 {
+		log.Fatal("COSMOFSOUT should have at least one directory or file.")
+	}
+
+	// Create a new user in the table
+	// TODO: Decode and create correct ID
+	err := Table.AddID(myID)
+
+	if err != nil {
+		log.Fatal("Could not create new ID")
+	}
+
+	// Shared directories are initialized
+	for _, dir := range sharedDirList {
+		dir = filepath.Clean(dir)
+
+		// Check wether we can read the current directory
+		fi, err := os.Lstat(dir);
+
+		if err != nil {
+			continue
+		}
+
+		// If it is a directory, look for the config file and decode it, or
+		// generate it if it does not already exists.
+		if fi.IsDir() {
+			configFileName := filepath.Join(dir, COSMOFSCONFIGFILE)
+
+			if *resetConfig {
+				_, err := os.Lstat(configFileName)
+
+				if err == nil {
+					err := os.Remove(configFileName)
+					if err != nil {
+						log.Fatal("Error re-generating config files.")
+					}
+				}
+			}
+
+			_, err := os.Lstat(configFileName)
+
+			if err != nil {
+				err := createConfigFile(dir, configFileName)
+
+				if err != nil {
+					log.Printf("Error creating config file: %s", err)
+					continue
+				}
+			}
+
+			// Decode the config file and update data structures.
+			err = decodeConfigFile(configFileName)
+			if err != nil {
+				log.Printf("Error decoding config file: %s", err)
+				continue
+			}
+		}
 	}
 }
 
-// TODO: Do not add duplicate dirs
+func (t IDTable) AddID (id string) (err error) {
+	err = checkID(id)
+
+	if err != nil {
+		return err
+	}
+
+	if _, ok := t[id]; !ok {
+		t[id] = make(DirTable)
+	}
+
+	return err
+}
+
 func (t IDTable) AddDir (id, dir, baseDir string, recursive bool) (err error) {
+	// Check for existing dir
+	err = t.ExistsDir(id,baseDir)
+
+	if err == nil {
+		log.Printf("Error: Dir %s already exists in the table", baseDir)
+		return err
+	}
+
 	// Read the directory and include the files on it.
 	fi, err := os.Lstat(dir)
 
@@ -117,6 +207,16 @@ func (t IDTable) ListIDs() (ids []string, err error) {
 	return nil, &NameServerError{}
 }
 
+func (t IDTable) ListAllDirs() (dirs []string, err error) {
+	for id, v := range t {
+		for k := range v {
+			dirs = append(dirs, filepath.Join(id, k))
+		}
+		return dirs, err
+	}
+	return nil, &NameServerError{}
+}
+
 func (t IDTable) ListDirs(id string) (dirs []string, err error) {
 	if v, ok := t[id]; ok {
 		for k := range v {
@@ -139,11 +239,25 @@ func (t IDTable) ListDir (id, dir string) (content []string, err error) {
 	return content, &NameServerError{}
 }
 
-func (t IDTable) IDExists (id string) (i string, err error) {
+func (t IDTable) ExistsID (id string) (i string, err error) {
 	if _, ok := t[id]; ok {
 		return id, err
 	}
 	return "", &NameServerError{}
+}
+
+func (t IDTable) ExistsDir (id, dir string) (err error) {
+	_, err = t.ExistsID(id)
+
+	if err != nil {
+		return &NameServerError{}
+	}
+
+	if _, ok := t[id][dir]; !ok {
+		return &NameServerError{}
+	}
+
+	return err
 }
 
 func (t IDTable) SearchDir (dir string) (result []string, err error) {
@@ -246,3 +360,50 @@ func SplitPath (path string) (id, dir string, err error) {
 
 	return res[0], res[1], err
 }
+
+func createConfigFile(dir, configFileName string) (err error) {
+	// Create the config file.
+	configFile, err := os.Create(configFileName)
+
+	if err != nil {
+		return err
+	}
+
+	// Add directory and subdirectories
+	// TODO: Should it be recursive?
+	err = Table.AddDir(myID, dir, filepath.Base(dir), true)
+
+	if err != nil {
+		log.Printf("Error adding new directory: %s", err)
+		return err
+	}
+
+	configEnc := gob.NewEncoder(configFile)
+
+	err = configEnc.Encode(Table)
+	if err != nil {
+		log.Fatal("Error encoding table in config file: ", err)
+	}
+
+	return err
+}
+
+func decodeConfigFile(configFileName string) (err error){
+	configFile, err := os.Open(configFileName)
+
+	if err != nil {
+		log.Printf("Error opening config file: %s", err)
+		return err
+	}
+
+	configDec := gob.NewDecoder(configFile)
+
+	err = configDec.Decode(&Table)
+
+	if err != nil {
+		log.Fatal("Error decoding list of files config file: ", err)
+	}
+
+	return err
+}
+

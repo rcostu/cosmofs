@@ -21,13 +21,21 @@ along with Cosmofs.  If not, see <http://www.gnu.org/licenses/>.
 
 package cosmofs
 
+import (
+	"flag"
+	"os"
+)
+
 const (
 	COSMOFSDIR string = ".cosmofs"
 	COSMOFSCONFIGFILE string = ".cosmofsconfig"
 )
 
 var (
-	Cosmofsin string
-	Cosmofsout string
+	//Cosmofsin string = os.Getenv("COSMOFSIN")
+	//Cosmofsout string = os.Getenv("COSMOFSOUT")
+	Cosmofsin *string = flag.String("cosmofsin", os.Getenv("COSMOFSIN"), "Location of incoming packages")
+	Cosmofsout *string = flag.String("cosmofsout", os.Getenv("COSMOFSOUT"), "Location of shared directories")
+	resetConfig *bool = flag.Bool("r", false, "Re-generate config files")
 )
 
