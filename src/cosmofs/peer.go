@@ -129,6 +129,7 @@ func parseString(in []byte) (kind, key, id []byte, ok bool) {
 	kind = parts[0]
 	key = parts[1]
 	id = parts[2]
+	id = id[:len(id)-1]
 	ok = true
 	return
 }
