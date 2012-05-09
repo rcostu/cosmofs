@@ -24,8 +24,11 @@ package cosmofs
 import (
 	"bytes"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/binary"
 	"encoding/base64"
+	"encoding/pem"
+	"errors"
 	"log"
 	"math/big"
 )
@@ -45,7 +48,24 @@ type localPeer struct {
 
 type Peer struct {
 	ID string
-	PubKey *rsa.PubKey
+	PubKey *rsa.PublicKey
+}
+
+// ParsePrivateKey parses a private RSA PKCS1 Key
+func ParsePrivateKey(in []byte) (out interface{}, err error) {
+	block, _ := pem.Decode(in)
+
+	if block == nil {
+		return nil, errors.New("SSH: no private key found")
+	}
+
+	out, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return
 }
 
 // ParsePubKey parses a Public SSH-RSA Key encoded in Base64 format
