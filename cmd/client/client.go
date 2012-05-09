@@ -55,7 +55,7 @@ func parseKey() {
 	fi, err := os.Lstat(keyFileName)
 
 	if err != nil {
-		log.Fatal("Error: SSH Key file doesn't found.")
+		log.Fatal("Error: Cannot find SSH Key file.")
 	}
 
 	keyFile, err := os.Open(keyFileName)
@@ -72,9 +72,16 @@ func parseKey() {
 
 	fmt.Printf("%s\n", buffer)
 
-	//var agKey *ssh.AgentKey = &ssh.AgentKey{blob: buffer, Comment: ""}
+	out, rest, ok := ParseString(buffer)
 
-	//fmt.Println(agKey.Key())
+	if !ok {
+		fmt.Println("Error")
+	}
+
+	fmt.Println("OUT: ", out)
+	fmt.Println("REST: ", rest)
+
+	os.Exit(1)
 }
 
 func main () {
@@ -84,7 +91,7 @@ func main () {
 		log.Fatal("A server must be specified")
 	}
 
-	//parseKey()
+	parseKey()
 
 	//conn, err := net.Dial("tcp", flag.Arg(0) + ":" + PORT)
 
