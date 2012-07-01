@@ -31,6 +31,8 @@ import (
 	"errors"
 	"log"
 	"math/big"
+	"os"
+	"path/filepath"
 )
 
 const (
@@ -38,17 +40,73 @@ const (
 )
 
 var (
+	MyPrivatePeer *localPeer
+	MyPublicPeer *Peer
 	PeerList map[string]*Peer = make(map[string]*Peer)
+
+	//TODO: Change prueba.pub to id_rsa.pub
+	pubkeyFileName string = filepath.Join(os.Getenv("HOME"), ".ssh", "prueba.pub")
+	privkeyFileName string = filepath.Join(os.Getenv("HOME"), ".ssh", "prueba")
 )
 
 type localPeer struct {
-	ID string
-	Key *rsa.PrivateKey
+	id string
+	key *rsa.PrivateKey
 }
 
 type Peer struct {
 	ID string
 	PubKey *rsa.PublicKey
+}
+
+func parseKeyFile(keyFileName string) ([]byte) {
+	fi, err := os.Lstat(keyFileName)
+
+	if err != nil {
+		log.Fatal("Error: Cannot find SSH Key file.")
+	}
+
+	keyFile, err := os.Open(keyFileName)
+
+	if err != nil {
+		log.Fatal("Error: Cannot open SSH Key file.")
+	}
+
+	defer keyFile.Close()
+
+	buffer := make([]byte, fi.Size())
+
+	keyFile.Read(buffer)
+
+	return buffer
+}
+
+func init() {
+	buffer := parseKeyFile(pubkeyFileName)
+
+	key, _, id, ok := ParsePubKey(buffer)
+
+	if !ok {
+		log.Fatal("Cannot parse Public Key File")
+	}
+
+	MyPublicPeer = &Peer{
+		ID: string(id),
+		PubKey: key.(*rsa.PublicKey),
+	}
+
+	buffer = parseKeyFile(privkeyFileName)
+
+	key, err := ParsePrivateKey(buffer)
+
+	if err != nil{
+		log.Fatal("Cannot parse Private Key File:", err)
+	}
+
+	MyPrivatePeer = &localPeer{
+		id: string(id),
+		key: key.(*rsa.PrivateKey),
+	}
 }
 
 // ParsePrivateKey parses a private RSA PKCS1 Key

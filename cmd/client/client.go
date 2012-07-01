@@ -72,7 +72,7 @@ func parseKey() {
 
 	fmt.Printf("%s\n", buffer)
 
-	out, rest, ok := ParseString(buffer)
+	/*out, rest, ok := ParseString(buffer)
 
 	if !ok {
 		fmt.Println("Error")
@@ -81,7 +81,7 @@ func parseKey() {
 	fmt.Println("OUT: ", out)
 	fmt.Println("REST: ", rest)
 
-	os.Exit(1)
+	os.Exit(1)*/
 }
 
 func main () {
@@ -91,7 +91,7 @@ func main () {
 		log.Fatal("A server must be specified")
 	}
 
-	parseKey()
+	//parseKey()
 
 	//conn, err := net.Dial("tcp", flag.Arg(0) + ":" + PORT)
 
@@ -106,7 +106,11 @@ func main () {
 
 	defer conn.Close()
 
-	configDec := gob.NewDecoder(conn)
+	_, err = conn.Write([]byte("CosmoFS conn\n"))
+
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
 
 	if *list_dirs {
 		fmt.Printf("List directories\n")
@@ -117,6 +121,7 @@ func main () {
 			log.Fatalf("Error: %s\n", err)
 		}
 
+		configDec := gob.NewDecoder(conn)
 		err = configDec.Decode(&cosmofs.Table)
 
 		if err != nil {

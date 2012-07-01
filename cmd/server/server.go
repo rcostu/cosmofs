@@ -24,8 +24,9 @@ package main
 import (
 	"bufio"
 	"cosmofs"
-	"flag"
 	"encoding/gob"
+	"flag"
+	"io"
 	"log"
 	"net"
 	"strings"
@@ -46,6 +47,8 @@ func debug (format string, v ...interface{}) {
 func handlePetition (conn net.Conn) {
 	debug("Connection made from: %s\n", conn.RemoteAddr())
 
+	defer conn.Close()
+
 	reader := bufio.NewReader(conn)
 
 	line, err := reader.ReadString('\n')
@@ -57,19 +60,37 @@ func handlePetition (conn net.Conn) {
 
 	line = strings.TrimRight(line, "\n")
 
-	// Listing directories
-	switch line {
-		case "List Directories":
-			debug("List directories from: %s\n", conn.RemoteAddr())
+	if line != "CosmoFS conn" {
+		debug("Error in protocol")
+		return
+	}
 
-			configEnc := gob.NewEncoder(conn)
+	for line != "CosmoFS end conn" {
+		line, err := reader.ReadString('\n')
 
-			// Send the number of shared directories
-			err = configEnc.Encode(cosmofs.Table)
+		if err != nil && err != io.EOF {
+			debug("Error reading connection: %s", err)
+			return
+		}
 
-			if err != nil {
-				log.Fatal("Error sending shared Table: ", err)
-			}
+		line = strings.TrimRight(line, "\n")
+
+		debug("%v - %s",conn.RemoteAddr(), line)
+
+		// Listing directories
+		switch line {
+			case "List Directories":
+				debug("List directories from: %s\n", conn.RemoteAddr())
+
+				configEnc := gob.NewEncoder(conn)
+
+				// Send the number of shared directories
+				err = configEnc.Encode(cosmofs.Table)
+
+				if err != nil {
+					log.Fatal("Error sending shared Table: ", err)
+				}
+		}
 	}
 }
 
