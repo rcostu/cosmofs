@@ -37,5 +37,9 @@ var (
 	Cosmofsin *string = flag.String("cosmofsin", os.Getenv("COSMOFSIN"), "Location of incoming packages")
 	Cosmofsout *string = flag.String("cosmofsout", os.Getenv("COSMOFSOUT"), "Location of shared directories")
 	resetConfig *bool = flag.Bool("r", false, "Re-generate config files")
+
+	//TODO: Change prueba.pub to id_rsa.pub
+	pubkeyFileName *string = flag.String("cosmofspubkey", os.Getenv("COSMOFSPUBKEY"), "Location of public RSA Key")
+	privkeyFileName *string = flag.String("cosmofsprivkey", os.Getenv("COSMOFSPRIVKEY"), "Location of private RSA Key")
 )
 

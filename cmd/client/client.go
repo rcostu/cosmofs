@@ -22,7 +22,6 @@ along with Cosmofs.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	//ssh "code.google.com/p/go.crypto/ssh"
 	"cosmofs"
 	"encoding/gob"
 	"flag"

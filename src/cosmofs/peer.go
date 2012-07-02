@@ -32,7 +32,6 @@ import (
 	"log"
 	"math/big"
 	"os"
-	"path/filepath"
 )
 
 const (
@@ -43,10 +42,6 @@ var (
 	MyPrivatePeer *localPeer
 	MyPublicPeer *Peer
 	PeerList map[string]*Peer = make(map[string]*Peer)
-
-	//TODO: Change prueba.pub to id_rsa.pub
-	pubkeyFileName string = filepath.Join(os.Getenv("HOME"), ".ssh", "prueba.pub")
-	privkeyFileName string = filepath.Join(os.Getenv("HOME"), ".ssh", "prueba")
 )
 
 type localPeer struct {
@@ -57,6 +52,34 @@ type localPeer struct {
 type Peer struct {
 	ID string
 	PubKey *rsa.PublicKey
+}
+
+func init() {
+	buffer := parseKeyFile(*pubkeyFileName)
+
+	key, _, id, ok := parsePubKey(buffer)
+
+	if !ok {
+		log.Fatal("Cannot parse Public Key File")
+	}
+
+	MyPublicPeer = &Peer{
+		ID: string(id),
+		PubKey: key.(*rsa.PublicKey),
+	}
+
+	buffer = parseKeyFile(*privkeyFileName)
+
+	key, err := parsePrivateKey(buffer)
+
+	if err != nil{
+		log.Fatal("Cannot parse Private Key File:", err)
+	}
+
+	MyPrivatePeer = &localPeer{
+		id: string(id),
+		key: key.(*rsa.PrivateKey),
+	}
 }
 
 func parseKeyFile(keyFileName string) ([]byte) {
@@ -81,36 +104,8 @@ func parseKeyFile(keyFileName string) ([]byte) {
 	return buffer
 }
 
-func init() {
-	buffer := parseKeyFile(pubkeyFileName)
-
-	key, _, id, ok := ParsePubKey(buffer)
-
-	if !ok {
-		log.Fatal("Cannot parse Public Key File")
-	}
-
-	MyPublicPeer = &Peer{
-		ID: string(id),
-		PubKey: key.(*rsa.PublicKey),
-	}
-
-	buffer = parseKeyFile(privkeyFileName)
-
-	key, err := ParsePrivateKey(buffer)
-
-	if err != nil{
-		log.Fatal("Cannot parse Private Key File:", err)
-	}
-
-	MyPrivatePeer = &localPeer{
-		id: string(id),
-		key: key.(*rsa.PrivateKey),
-	}
-}
-
-// ParsePrivateKey parses a private RSA PKCS1 Key
-func ParsePrivateKey(in []byte) (out interface{}, err error) {
+// parsePrivateKey parses a private RSA PKCS1 Key
+func parsePrivateKey(in []byte) (out interface{}, err error) {
 	block, _ := pem.Decode(in)
 
 	if block == nil {
@@ -126,8 +121,8 @@ func ParsePrivateKey(in []byte) (out interface{}, err error) {
 	return
 }
 
-// ParsePubKey parses a Public SSH-RSA Key encoded in Base64 format
-func ParsePubKey(in []byte) (out interface{}, rest, id []byte, ok bool) {
+// parsePubKey parses a Public SSH-RSA Key encoded in Base64 format
+func parsePubKey(in []byte) (out interface{}, rest, id []byte, ok bool) {
 	algo, key, id, ok := parseString(in)
 
 	if !ok {

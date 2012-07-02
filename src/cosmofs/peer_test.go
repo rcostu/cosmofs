@@ -30,7 +30,7 @@ func TestParsePubKey(t *testing.T) {
 
 	t.Logf("%s", buffer)
 
-	key, _, id, ok := ParsePubKey(buffer)
+	key, _, id, ok := parsePubKey(buffer)
 
 	if !ok {
 		t.Fatal("Error")
@@ -77,7 +77,7 @@ func TestParsePrivKey(t *testing.T) {
 
 	t.Logf("%s", buffer)
 
-	key, err := ParsePrivateKey(buffer)
+	key, err := parsePrivateKey(buffer)
 
 	if err != nil {
 		t.Fatal("Error:", err)

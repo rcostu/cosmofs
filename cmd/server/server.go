@@ -65,32 +65,28 @@ func handlePetition (conn net.Conn) {
 		return
 	}
 
-	for line != "CosmoFS end conn" {
-		line, err := reader.ReadString('\n')
+	line, err = reader.ReadString('\n')
 
-		if err != nil && err != io.EOF {
-			debug("Error reading connection: %s", err)
-			return
-		}
+	if err != nil && err != io.EOF {
+		debug("Error reading connection: %s", err)
+		return
+	}
 
-		line = strings.TrimRight(line, "\n")
+	line = strings.TrimRight(line, "\n")
 
-		debug("%v - %s",conn.RemoteAddr(), line)
+	// Listing directories
+	switch line {
+		case "List Directories":
+			debug("List directories from: %s\n", conn.RemoteAddr())
 
-		// Listing directories
-		switch line {
-			case "List Directories":
-				debug("List directories from: %s\n", conn.RemoteAddr())
+			configEnc := gob.NewEncoder(conn)
 
-				configEnc := gob.NewEncoder(conn)
+			// Send the number of shared directories
+			err = configEnc.Encode(cosmofs.Table)
 
-				// Send the number of shared directories
-				err = configEnc.Encode(cosmofs.Table)
-
-				if err != nil {
-					log.Fatal("Error sending shared Table: ", err)
-				}
-		}
+			if err != nil {
+				log.Fatal("Error sending shared Table: ", err)
+			}
 	}
 }
 
