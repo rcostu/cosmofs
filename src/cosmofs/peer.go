@@ -27,11 +27,13 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/base64"
+	"encoding/gob"
 	"encoding/pem"
 	"errors"
 	"log"
 	"math/big"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -42,6 +44,8 @@ var (
 	MyPrivatePeer *localPeer
 	MyPublicPeer *Peer
 	PeerList map[string]*Peer = make(map[string]*Peer)
+
+	knownPeersFileName = filepath.Join(os.Getenv("HOME"), ".ssh", "cosmofs_known_peers")
 )
 
 type localPeer struct {
@@ -80,6 +84,67 @@ func init() {
 		id: string(id),
 		key: key.(*rsa.PrivateKey),
 	}
+}
+
+func SearchPeer(id string) (*Peer, bool){
+	if peer, ok := PeerList[id]; ok {
+		return peer, ok
+	}
+	return nil, false
+}
+
+func StorePeer(peer *Peer) {
+	PeerList[peer.ID] = peer
+}
+
+func createKnownPeersFile() (err error) {
+	knownPeersFile, err := os.Create(knownPeersFileName)
+
+	if err != nil {
+		return err
+	}
+
+	configEnc := gob.NewEncoder(knownPeersFile)
+
+	err = configEnc.Encode(PeerList)
+
+	if err != nil {
+		log.Fatal("Error encoding peer list in known peers file: ", err)
+	}
+
+	return err
+}
+
+func decodeKnownPeersFile() (err error) {
+	knownPeersFile, err := os.Open(knownPeersFileName)
+
+	if err != nil {
+		log.Printf("Error opening config file: %s", err)
+		return err
+	}
+
+	configDec := gob.NewDecoder(knownPeersFile)
+
+	err = configDec.Decode(&PeerList)
+
+	if err != nil {
+		log.Fatal("Error decoding list of files config file: ", err)
+	}
+
+	return err
+}
+
+func encodeKnownPeersFile() (err error) {
+	err = os.Remove(knownPeersFileName)
+
+	if err != nil {
+		log.Printf("Error removing known peers file: %s", err)
+		return err
+	}
+
+	createKnownPeersFile()
+
+	return err
 }
 
 func parseKeyFile(keyFileName string) ([]byte) {
