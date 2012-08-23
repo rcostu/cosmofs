@@ -51,11 +51,13 @@ var (
 type localPeer struct {
 	id string
 	key *rsa.PrivateKey
+	rawKey []byte
 }
 
 type Peer struct {
 	ID string
 	PubKey *rsa.PublicKey
+	RawKey []byte
 }
 
 func init() {
@@ -70,6 +72,7 @@ func init() {
 	MyPublicPeer = &Peer{
 		ID: string(id),
 		PubKey: key.(*rsa.PublicKey),
+		RawKey: buffer,
 	}
 
 	buffer = parseKeyFile(*privkeyFileName)
@@ -83,6 +86,25 @@ func init() {
 	MyPrivatePeer = &localPeer{
 		id: string(id),
 		key: key.(*rsa.PrivateKey),
+		rawKey: buffer,
+	}
+
+	createKnownPeersFile()
+
+	_, err = os.Lstat(knownPeersFileName)
+
+	if err != nil {
+		err := createKnownPeersFile()
+
+		if err != nil {
+			log.Printf("Error creating known peers file: %s", err)
+		}
+	}
+
+	err = decodeKnownPeersFile()
+
+	if err != nil {
+		log.Printf("Error decoding known peers file: %s", err)
 	}
 }
 

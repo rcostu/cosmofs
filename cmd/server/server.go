@@ -79,10 +79,9 @@ func handlePetition (conn net.Conn) {
 		case "List Directories":
 			debug("List directories from: %s\n", conn.RemoteAddr())
 
-			configEnc := gob.NewEncoder(conn)
-
+			encod := gob.NewEncoder(conn)
 			// Send the number of shared directories
-			err = configEnc.Encode(cosmofs.Table)
+			err = encod.Encode(cosmofs.Table)
 
 			if err != nil {
 				log.Fatal("Error sending shared Table: ", err)

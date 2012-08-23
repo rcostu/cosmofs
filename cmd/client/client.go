@@ -28,8 +28,7 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"path/filepath"
+	"strings"
 )
 
 var (
@@ -48,39 +47,19 @@ func debug (format string, v ...interface{}) {
 	}
 }
 
-func parseKey() {
-	keyFileName := filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa.pub")
-
-	fi, err := os.Lstat(keyFileName)
-
-	if err != nil {
-		log.Fatal("Error: Cannot find SSH Key file.")
+func checkIPv(IP string) {
+	if strings.Contains(IP, ":") {
+		return
 	}
 
-	keyFile, err := os.Open(keyFileName)
+	ips := strings.Split(IP, "/")
 
-	if err != nil {
-		log.Fatal("Error: Cannot open SSH Key file.")
+	if ips[0] == "127.0.0.1" {
+		return
 	}
 
-	defer keyFile.Close()
-
-	buffer := make([]byte, fi.Size())
-
-	keyFile.Read(buffer)
-
-	fmt.Printf("%s\n", buffer)
-
-	/*out, rest, ok := ParseString(buffer)
-
-	if !ok {
-		fmt.Println("Error")
-	}
-
-	fmt.Println("OUT: ", out)
-	fmt.Println("REST: ", rest)
-
-	os.Exit(1)*/
+	log.Println(ips[0])
+	log.Println(ips[1])
 }
 
 func main () {
@@ -90,12 +69,16 @@ func main () {
 		log.Fatal("A server must be specified")
 	}
 
-	//parseKey()
-
 	//conn, err := net.Dial("tcp", flag.Arg(0) + ":" + PORT)
 
+	addrs, _ := net.InterfaceAddrs()
+	for _, v := range addrs {
+		checkIPv(v.String())
+	}
+
 	conn, err := net.DialTCP("tcp", nil, &net.TCPAddr{
-		IP:		net.IPv4(127,0,0,1),
+		//IP:		net.IPv4(127,0,0,1),
+		IP:		net.IPv4(80,157,14,127),
 		Port:	5453,
 	})
 
@@ -120,8 +103,8 @@ func main () {
 			log.Fatalf("Error: %s\n", err)
 		}
 
-		configDec := gob.NewDecoder(conn)
-		err = configDec.Decode(&cosmofs.Table)
+		decod := gob.NewDecoder(conn)
+		err = decod.Decode(&cosmofs.Table)
 
 		if err != nil {
 			log.Fatal("Error decoding table: ", err)
