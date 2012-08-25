@@ -77,7 +77,11 @@ func handlePetition (conn net.Conn) {
 
 	defer conn.Close()
 
-	reader := bufio.NewReader(conn)
+	debug("List of Peers: %v\n", cosmofs.PeerList)
+
+	cosmofs.ReceivePeer(conn)
+
+	/*reader := bufio.NewReader(conn)
 
 	line, err := reader.ReadString('\n')
 
@@ -100,7 +104,7 @@ func handlePetition (conn net.Conn) {
 			if err != nil {
 				log.Fatal("Error sending shared Table: ", err)
 			}
-	}
+	}*/
 }
 
 func main () {
@@ -174,19 +178,33 @@ func main () {
 			continue
 		}
 
-		log.Printf("REMOTE IP: %v SENT %v\n", strings.Split(remoteIP.String(), ":")[0], string(data))
+		remIP := strings.Split(remoteIP.String(), ":")
 
-		cosmofs.ConnectedPeer(string(data), strings.Split(remoteIP.String(), ":")[0])
+		cosmofs.ConnectedPeer(string(data), remIP[0])
 
 		log.Printf("CONNECTED: %v\n", cosmofs.ConnectedPeers)
 
-		connTCP, err := lnTCP.AcceptTCP()
+		log.Printf("FINAL IP: %v\n", net.ParseIP(remIP[0]))
+
+		connTCPS, err = net.DialTCP("tcp", nil, &net.TCPAddr{
+			IP:		net.ParseIP(remIP[0]),
+			Port:	5453,
+		})
+
+		if err != nil {
+			log.Fatalf("Error: %s\n", err)
+			return
+		}
+
+		cosmofs.SendPeer(connTCPS)
+
+		connTCPR, err := lnTCP.AcceptTCP()
 
 		if err != nil {
 			debug("Error: %s\n", err)
 			continue
 		}
 
-		go handlePetition(connTCP)
+		go handlePetition(connTCPR)
 	}
 }
