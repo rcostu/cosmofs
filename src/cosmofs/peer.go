@@ -44,6 +44,7 @@ var (
 	MyPrivatePeer *localPeer
 	MyPublicPeer *Peer
 	PeerList map[string]*Peer = make(map[string]*Peer)
+	ConnectedPeers map[string]string = make(map[string]string)
 
 	knownPeersFileName = filepath.Join(os.Getenv("HOME"), ".ssh", "cosmofs_known_peers")
 )
@@ -117,6 +118,14 @@ func SearchPeer(id string) (*Peer, bool){
 
 func StorePeer(peer *Peer) {
 	PeerList[peer.ID] = peer
+}
+
+func ConnectedPeer(id string, addr string) {
+	ConnectedPeers[id] = addr
+}
+
+func DisconnectedPeer(id string) {
+	delete(ConnectedPeers, id)
 }
 
 func createKnownPeersFile() (err error) {
