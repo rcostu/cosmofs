@@ -47,46 +47,8 @@ func debug (format string, v ...interface{}) {
 	}
 }
 
-func checkIPv(IP string) {
-	if strings.Contains(IP, ":") {
-		return
-	}
-
-	ips := strings.Split(IP, "/")
-
-	if ips[0] == "127.0.0.1" {
-		return
-	}
-
-	log.Println(ips[0])
-	log.Println(ips[1])
-}
-
 func main () {
 	flag.Parse()
-
-	if flag.NArg() < 1 {
-		log.Fatal("A server must be specified")
-	}
-
-	//conn, err := net.Dial("tcp", flag.Arg(0) + ":" + PORT)
-
-	addrs, _ := net.InterfaceAddrs()
-	for _, v := range addrs {
-		checkIPv(v.String())
-	}
-
-	conn, err := net.DialTCP("tcp", nil, &net.TCPAddr{
-		//IP:		net.IPv4(127,0,0,1),
-		IP:		net.IPv4(80,157,14,127),
-		Port:	5453,
-	})
-
-	if err != nil {
-		log.Fatalf("Error: %s\n", err)
-	}
-
-	defer conn.Close()
 
 	_, err = conn.Write([]byte("CosmoFS conn\n"))
 

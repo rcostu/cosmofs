@@ -53,20 +53,6 @@ func handlePetition (conn net.Conn) {
 
 	line, err := reader.ReadString('\n')
 
-	if err != nil {
-		debug("Error reading connection: %s", err)
-		return
-	}
-
-	line = strings.TrimRight(line, "\n")
-
-	if line != "CosmoFS conn" {
-		debug("Error in protocol")
-		return
-	}
-
-	line, err = reader.ReadString('\n')
-
 	if err != nil && err != io.EOF {
 		debug("Error reading connection: %s", err)
 		return
@@ -93,7 +79,7 @@ func main () {
 	flag.Parse()
 
 	// Leave the process listening for other peers
-	ln, err := net.ListenTCP("tcp", &net.TCPAddr{
+	lnUDP, err := net.ListenUDP("udp", &net.UDPAddr{
 		IP:		net.IPv4zero,
 		Port:	5453,
 	})
@@ -102,14 +88,54 @@ func main () {
 		debug("Error: %s\n", err)
 	}
 
-	debug("Listening on address ", ln.Addr())
+	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
+		IP:		net.IPv4(255,255,255,255),
+		Port:	5453,
+	})
+
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+		return
+	}
+
+	log.Printf("LOCAL: %v, REMOTE: %v\n", conn.LocalAddr(), conn.RemoteAddr())
+
+	conn.Close()
+
+	//Leave the process listening for other peers
+	lnTCP, err := net.ListenTCP("tcp", &net.TCPAddr{
+		IP:		net.IPv4zero,
+		Port:	5453,
+	})
+
+	if err != nil {
+		debug("Error: %s\n", err)
+		return
+	}
+
+	debug("Listening on address	", lnTCP.Addr())
 
 	for {
-		conn, err := ln.AcceptTCP()
+		data := make([]byte, 4096)
+		_, _, err := lnUDP.ReadFromUDP(data)
+
 		if err != nil {
 			debug("Error: %s\n", err)
 			continue
 		}
-		go handlePetition(conn)
+
+		if string(data) != "CosmoFS conn\n" {
+			debug("Error in protocol")
+			continue
+		}
+
+		connTCP, err := lnTCP.AcceptTCP()
+
+		if err != nil {
+			debug("Error: %s\n", err)
+			continue
+		}
+
+		go handlePetition(connTCP)
 	}
 }
