@@ -32,6 +32,7 @@ import (
 	"errors"
 	"log"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 )
@@ -118,6 +119,30 @@ func SearchPeer(id string) (*Peer, bool){
 
 func StorePeer(peer *Peer) {
 	PeerList[peer.ID] = peer
+}
+
+func SendPeer(conn net.Conn) {
+	encod := gob.NewEncoder(conn)
+
+	err := encod.Encode(*MyPublicPeer)
+
+	if err != nil {
+		log.Fatal("Error sending Public Peer: ", err)
+	}
+}
+
+func ReceivePeer (conn net.Conn) {
+	decod := gob.NewDecoder(conn)
+
+	var receivedPeer Peer
+
+	err := decod.Decode(receivedPeer)
+
+	if err != nil {
+		log.Fatal("Error decoding table: ", err)
+	}
+
+	StorePeer(&receivedPeer)
 }
 
 func ConnectedPeer(id string, addr string) {
