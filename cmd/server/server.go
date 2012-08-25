@@ -98,7 +98,11 @@ func main () {
 		return
 	}
 
-	log.Printf("LOCAL: %v, REMOTE: %v\n", conn.LocalAddr(), conn.RemoteAddr())
+	_, err = conn.Write([]byte("CosmoFS conn\n"))
+
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}	
 
 	conn.Close()
 
@@ -113,8 +117,6 @@ func main () {
 		return
 	}
 
-	debug("Listening on address	", lnTCP.Addr())
-
 	for {
 		data := make([]byte, 4096)
 		_, _, err := lnUDP.ReadFromUDP(data)
@@ -123,6 +125,8 @@ func main () {
 			debug("Error: %s\n", err)
 			continue
 		}
+
+		log.Println(data)
 
 		if string(data) != "CosmoFS conn\n" {
 			debug("Error in protocol")
