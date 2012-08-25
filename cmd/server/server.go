@@ -23,6 +23,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"cosmofs"
 	"encoding/gob"
 	"flag"
@@ -42,6 +43,33 @@ func debug (format string, v ...interface{}) {
 		log.Printf(format, v)
 	}
 }
+
+/*func listDirectories() {
+	fmt.Printf("List directories\n")
+	
+	_, err = conn.Write([]byte("List Directories\n"))
+
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
+
+	decod := gob.NewDecoder(conn)
+	err = decod.Decode(&cosmofs.Table)
+
+	if err != nil {
+		log.Fatal("Error decoding table: ", err)
+	}
+
+	dirs, err := cosmofs.Table.ListAllDirs()
+
+	if err != nil {
+		log.Printf("Error reading dirs %s", err)
+	}
+
+	for _, v := range dirs {
+		fmt.Println(v)
+	}
+}*/
 
 // Handles petitions from the peers.
 func handlePetition (conn net.Conn) {
@@ -106,6 +134,12 @@ func main () {
 		log.Fatalf("Error: %s\n", err)
 	}
 
+	_, err = conn.Write([]byte(cosmofs.MyPublicPeer.ID))
+
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
+
 	conn.Close()
 
 	//Leave the process listening for other peers
@@ -128,12 +162,23 @@ func main () {
 			continue
 		}
 
-		log.Printf("REMOTE IP: %v SENT %v\n", remoteIP, string(data))
-
-		if string(data) != "CosmoFS conn\n" {
+		if !bytes.HasPrefix(data, []byte("CosmoFS conn")) {
 			debug("Error in protocol")
 			continue
 		}
+
+		_, remoteIP, err = lnUDP.ReadFromUDP(data)
+
+		if err != nil {
+			debug("Error: %s\n", err)
+			continue
+		}
+
+		log.Printf("REMOTE IP: %v SENT %v\n", strings.Split(remoteIP.String(), ":")[0], string(data))
+
+		cosmofs.ConnectedPeer(string(data), strings.Split(remoteIP.String(), ":")[0])
+
+		log.Printf("CONNECTED: %v\n", cosmofs.ConnectedPeers)
 
 		connTCP, err := lnTCP.AcceptTCP()
 

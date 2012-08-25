@@ -50,12 +50,6 @@ func debug (format string, v ...interface{}) {
 func main () {
 	flag.Parse()
 
-	_, err = conn.Write([]byte("CosmoFS conn\n"))
-
-	if err != nil {
-		log.Fatalf("Error: %s\n", err)
-	}
-
 	if *list_dirs {
 		fmt.Printf("List directories\n")
 		//fmt.Fprintf(conn, "List Directories\n")
