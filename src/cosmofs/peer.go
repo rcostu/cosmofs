@@ -32,7 +32,6 @@ import (
 	"errors"
 	"log"
 	"math/big"
-	"net"
 	"os"
 	"path/filepath"
 )
@@ -121,9 +120,7 @@ func StorePeer(peer *Peer) {
 	PeerList[peer.ID] = peer
 }
 
-func SendPeer(conn net.Conn) {
-	encod := gob.NewEncoder(conn)
-
+func SendPeer(encod *gob.Encoder) {
 	err := encod.Encode(*MyPublicPeer)
 
 	if err != nil {
@@ -131,15 +128,13 @@ func SendPeer(conn net.Conn) {
 	}
 }
 
-func ReceivePeer (conn net.Conn) {
-	decod := gob.NewDecoder(conn)
-
+func ReceivePeer (decod *gob.Decoder) {
 	var receivedPeer Peer
 
-	err := decod.Decode(receivedPeer)
+	err := decod.Decode(&receivedPeer)
 
 	if err != nil {
-		log.Fatal("Error decoding table: ", err)
+		log.Fatal("Error decoding received Peer: ", err)
 	}
 
 	StorePeer(&receivedPeer)

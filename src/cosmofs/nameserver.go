@@ -34,6 +34,11 @@ type FileList []*File
 type DirTable map[string]FileList
 type IDTable map[string]DirTable
 
+var (
+	Table IDTable = make(IDTable)
+	myID = "roberto@costumero.es"
+)
+
 // TODO: Multiple different kinds of errors
 type NameServerError struct {
 	e error
@@ -42,11 +47,6 @@ type NameServerError struct {
 func (e *NameServerError) Error() string {
 	return "Error in the NameServer"
 }
-
-var (
-	Table IDTable = make(IDTable)
-	myID = "roberto@costumero.es"
-)
 
 func init() {
 	// Check if COSMOFSIN environment is set
@@ -323,11 +323,33 @@ func (t IDTable) DeleteID (id string) {
 }
 
 func (t IDTable) DeleteDir (id, dir string) {
-	if _, ok := t[id]; ok {
-		if _, ok := t[id][dir]; ok {
-			delete(t[id], dir)
-			if len(t[id]) == 0 {
-				t.DeleteID(id)
+	if _, ok := t[id][dir]; ok {
+		delete(t[id], dir)
+		if len(t[id]) == 0 {
+			t.DeleteID(id)
+		}
+	}
+}
+
+func (t IDTable) ReceiveAndMergeTable (decod *gob.Decoder) {
+	var recvTable IDTable = make(IDTable)
+
+	err := decod.Decode(&recvTable)
+
+	if err != nil {
+		log.Fatal("Error decoding table: ", err)
+	}
+
+
+	// TODO: Averiguar qué imprime k y v.
+	// En base a estos valores, respetar la información del ID local y comparar
+	// el resto de valores para dejar la información más actualizada posible.
+	for k, v := range recvTable {
+		for d, _ := range v {
+			log.Printf("K: %v, D: %v\n", k, d)
+			if _, ok := t[k][d]; !ok {
+				t.AddDir(k,d,filepath.Base(d),false)
+				log.Printf("Added dir %v from %v\n", v, k)
 			}
 		}
 	}
@@ -405,5 +427,19 @@ func decodeConfigFile(configFileName string) (err error){
 	}
 
 	return err
+}
+
+func encodeConfigFile(configFileName string) (err error){
+	_, err := os.Lstat(configFileName)
+
+	if err == nil {
+		err := os.Remove(configFileName)
+		if err != nil {
+			log.Fatal("Error re-generating config files.")
+		}
+	}
+
+
+
 }
 
