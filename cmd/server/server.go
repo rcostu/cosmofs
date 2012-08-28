@@ -128,6 +128,19 @@ func main () {
 		debug("Error: %s\n", err)
 	}
 
+	//Leave the process listening for other peers
+	lnTCP, err := net.ListenTCP("tcp", &net.TCPAddr{
+		IP:		net.IPv4zero,
+		Port:	5453,
+	})
+
+	if err != nil {
+		debug("Error: %s\n", err)
+		return
+	}
+
+	// Every server sends a broadcast message to anyone connected on the same
+	// network.
 	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
 		IP:		net.IPv4(255,255,255,255),
 		Port:	5453,
@@ -153,17 +166,6 @@ func main () {
 	}
 
 	conn.Close()
-
-	//Leave the process listening for other peers
-	lnTCP, err := net.ListenTCP("tcp", &net.TCPAddr{
-		IP:		net.IPv4zero,
-		Port:	5453,
-	})
-
-	if err != nil {
-		debug("Error: %s\n", err)
-		return
-	}
 
 	for {
 		data := make([]byte, 4096)
