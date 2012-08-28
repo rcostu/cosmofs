@@ -78,6 +78,8 @@ func init() {
 
 	myID = string(id)
 
+    log.Println(myID)
+
 	// Create a new user in the table
 	// TODO: Decode and create correct ID
 	err := Table.AddID(myID)
