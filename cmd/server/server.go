@@ -22,12 +22,12 @@ along with Cosmofs.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"bufio"
+	//"bufio"
 	"bytes"
 	"cosmofs"
 	"encoding/gob"
 	"flag"
-	"io"
+	//"io"
 	"log"
 	"net"
 	"strings"
@@ -79,7 +79,15 @@ func handlePetition (conn net.Conn) {
 
 	debug("List of Peers: %v\n", cosmofs.PeerList)
 
-	cosmofs.ReceivePeer(conn)
+	decod := gob.NewDecoder(conn)
+
+	cosmofs.ReceivePeer(decod)
+
+	debug("List of Peers: %v\n", cosmofs.PeerList)
+
+	cosmofs.Table.ReceiveAndMergeTable(decod)
+
+	debug("LISTA DE DIRECTORIOS: %v\n", cosmofs.Table)
 
 	/*reader := bufio.NewReader(conn)
 
@@ -186,7 +194,7 @@ func main () {
 
 		log.Printf("FINAL IP: %v\n", net.ParseIP(remIP[0]))
 
-		connTCPS, err = net.DialTCP("tcp", nil, &net.TCPAddr{
+		connTCPS, err := net.DialTCP("tcp", nil, &net.TCPAddr{
 			IP:		net.ParseIP(remIP[0]),
 			Port:	5453,
 		})
@@ -196,7 +204,16 @@ func main () {
 			return
 		}
 
-		cosmofs.SendPeer(connTCPS)
+		encod := gob.NewEncoder(connTCPS)
+
+		cosmofs.SendPeer(encod)
+
+		// Send the number of shared directories
+		err = encod.Encode(cosmofs.Table)
+
+		if err != nil {
+			log.Fatal("Error sending shared Table: ", err)
+		}
 
 		connTCPR, err := lnTCP.AcceptTCP()
 
