@@ -430,16 +430,16 @@ func decodeConfigFile(configFileName string) (err error){
 }
 
 func encodeConfigFile(configFileName string) (err error){
-	_, err := os.Lstat(configFileName)
+	_, err = os.Lstat(configFileName)
 
 	if err == nil {
-		err := os.Remove(configFileName)
+		err = os.Remove(configFileName)
 		if err != nil {
 			log.Fatal("Error re-generating config files.")
 		}
 	}
 
 
-
+	return err
 }
 
