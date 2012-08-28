@@ -36,7 +36,7 @@ type IDTable map[string]DirTable
 
 var (
 	Table IDTable = make(IDTable)
-	myID = "roberto@costumero.es"
+	myID string
 )
 
 // TODO: Multiple different kinds of errors
@@ -65,6 +65,18 @@ func init() {
 	if len(sharedDirList) == 0 {
 		log.Fatal("COSMOFSOUT should have at least one directory or file.")
 	}
+
+	// TODO: Fix this
+	// HACK to get here myID correctly
+	buffer := parseKeyFile(*pubkeyFileName)
+
+	_, _, id, ok := parsePubKey(buffer)
+
+	if !ok {
+		log.Fatal("Cannot parse Public Key File")
+	}
+
+	myID = string(id)
 
 	// Create a new user in the table
 	// TODO: Decode and create correct ID
@@ -340,15 +352,16 @@ func (t IDTable) ReceiveAndMergeTable (decod *gob.Decoder) {
 		log.Fatal("Error decoding table: ", err)
 	}
 
+	log.Printf("LOCAL TABLE: %v\n", Table)
+	log.Printf("REMOTE TABLE: %v\n", recvTable)
 
-	// TODO: Averiguar qué imprime k y v.
-	// En base a estos valores, respetar la información del ID local y comparar
-	// el resto de valores para dejar la información más actualizada posible.
 	for k, v := range recvTable {
-		for d, _ := range v {
+		for d, files := range v {
 			log.Printf("K: %v, D: %v\n", k, d)
 			if _, ok := t[k][d]; !ok {
-				t.AddDir(k,d,filepath.Base(d),false)
+				//t.AddDir(k,d,filepath.Base(d),false)
+				t.AddID(k)
+				t[k][d] = files
 				log.Printf("Added dir %v from %v\n", v, k)
 			}
 		}
