@@ -224,9 +224,8 @@ func (t IDTable) ListAllDirs() (dirs []string, err error) {
 		for k := range v {
 			dirs = append(dirs, filepath.Join(id, k))
 		}
-		return dirs, err
 	}
-	return nil, &NameServerError{}
+	return dirs, err
 }
 
 func (t IDTable) ListDirs(id string) (dirs []string, err error) {
