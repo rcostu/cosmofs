@@ -56,6 +56,135 @@ func listDirectories(conn *net.TCPConn) {
 	encod.Encode(dirs)
 }
 
+func listIDs(conn *net.TCPConn) {
+	ids, err := cosmofs.Table.ListIDs()
+
+	if err != nil {
+		log.Printf("Error reading ids %s", err)
+	}
+
+	encod := gob.NewEncoder(conn)
+
+	encod.Encode(ids)
+}
+
+func listDirectoriesID(conn *net.TCPConn, reader *bufio.Reader) {
+	id, err := reader.ReadString('\n')
+
+	if err != nil && err != io.EOF {
+		debug("Error reading connection: %s", err)
+		return
+	}
+
+	id = strings.TrimRight(id, "\n")
+
+	log.Printf("List directories for id %s from %s\n", id, conn.RemoteAddr())
+
+	dirs, err := cosmofs.Table.ListDirs(id)
+
+	if err != nil {
+		log.Printf("Error reading dirs %s", err)
+	}
+
+	encod := gob.NewEncoder(conn)
+
+	encod.Encode(dirs)
+}
+
+func listDirectory(conn *net.TCPConn, reader *bufio.Reader) {
+	dirRecv, err := reader.ReadString('\n')
+
+	if err != nil && err != io.EOF {
+		debug("Error reading connection: %s", err)
+		return
+	}
+
+	dirRecv = strings.TrimRight(dirRecv, "\n")
+
+	id, dir, _ := cosmofs.SplitPath(dirRecv)
+
+	log.Printf("List directory %s for id %s from %s\n", dir, id, conn.RemoteAddr())
+
+	dirs, err := cosmofs.Table.ListDir(id, dir)
+
+	if err != nil {
+		log.Printf("Error reading dirs %s", err)
+	}
+
+	encod := gob.NewEncoder(conn)
+
+	encod.Encode(dirs)
+}
+
+func search(conn *net.TCPConn, reader *bufio.Reader) {
+	search, err := reader.ReadString('\n')
+
+	if err != nil && err != io.EOF {
+		debug("Error reading connection: %s", err)
+		return
+	}
+
+	search = strings.TrimRight(search, "\n")
+
+	log.Printf("Searching for %s from %s\n", search, conn.RemoteAddr())
+
+	result, err := cosmofs.Table.Search(search)
+
+	if err != nil {
+		log.Printf("Error searching %s", err)
+	}
+
+	encod := gob.NewEncoder(conn)
+
+	encod.Encode(result)
+}
+
+func searchDir(conn *net.TCPConn, reader *bufio.Reader) {
+	search, err := reader.ReadString('\n')
+
+	if err != nil && err != io.EOF {
+		debug("Error reading connection: %s", err)
+		return
+	}
+
+	search = strings.TrimRight(search, "\n")
+
+	log.Printf("Searching Directories for %s from %s\n", search, conn.RemoteAddr())
+
+	result, err := cosmofs.Table.SearchDir(search)
+
+	if err != nil {
+		log.Printf("Error searching directories %s", err)
+	}
+
+	encod := gob.NewEncoder(conn)
+
+	encod.Encode(result)
+}
+
+func searchFile(conn *net.TCPConn, reader *bufio.Reader) {
+	search, err := reader.ReadString('\n')
+
+	if err != nil && err != io.EOF {
+		debug("Error reading connection: %s", err)
+		return
+	}
+
+	search = strings.TrimRight(search, "\n")
+
+	log.Printf("Searching files for %s from %s\n", search, conn.RemoteAddr())
+
+	result, err := cosmofs.Table.SearchFile(search)
+
+	if err != nil {
+		log.Printf("Error searching files %s", err)
+	}
+
+	encod := gob.NewEncoder(conn)
+
+	encod.Encode(result)
+}
+
 func handleLocalPetition (conn *net.TCPConn) {
 	defer conn.Close()
 
@@ -78,6 +207,24 @@ func handleLocalPetition (conn *net.TCPConn) {
 			debug("List directories from: %s\n", conn.RemoteAddr())
 			debug("Table is now: %v\n", cosmofs.Table)
 			listDirectories(conn)
+		case "List Directories ID":
+			debug("List Directories ID")
+			listDirectoriesID(conn, reader)
+		case "List Directory":
+			debug("List Directory")
+			listDirectory(conn, reader)
+		case "List IDs":
+			debug("List IDs from: %s\n", conn.RemoteAddr())
+			listIDs(conn)
+		case "Search":
+			debug("Search from %s\n", conn.RemoteAddr())
+			search(conn, reader)
+		case "Search Directory":
+			debug("Search Directory from %s\n", conn.RemoteAddr())
+			searchDir(conn, reader)
+		case "Search File":
+			debug("Search File from %s\n", conn.RemoteAddr())
+			searchFile(conn, reader)
 	}
 }
 
