@@ -22,12 +22,9 @@ along with Cosmofs.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	//"bufio"
-	"bytes"
 	"cosmofs"
 	"encoding/gob"
 	"flag"
-	//"io"
 	"log"
 	"net"
 	"strings"
