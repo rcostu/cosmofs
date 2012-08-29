@@ -24,7 +24,7 @@ package cosmofs
 type chunk struct {
 	Name string
 	RemPath string
-	peer Peer
+	Owner *Peer
 }
 
 type File struct {
@@ -32,14 +32,11 @@ type File struct {
 	GlobalPath string
 	Filename string
 	Size int64
-	Owner Peer
+	Owner *Peer
 	Chunks []chunk
-	NumChunks bool
-	MaintainChunks bool
+	NumChunks int
 	Online bool
 	KeepCopy bool
-	Public bool
-	Backup bool
 	IsDir bool
 }
 

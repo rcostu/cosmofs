@@ -193,6 +193,11 @@ func (t IDTable) AddDir (id, dir, baseDir string, recursive bool) (err error) {
 				Filename: ent.Name(),
 				Size: ent.Size(),
 				IsDir: ent.IsDir(),
+				Owner: MyPublicPeer,
+				KeepCopy: true,
+				Online: false,
+				NumChunks: 1,
+				Chunks: nil,
 			})
 
 			if recursive && ent.IsDir() {
