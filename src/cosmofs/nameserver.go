@@ -392,7 +392,7 @@ func SplitPath (path string) (id, dir string, err error) {
 		return id, dir, &NameServerError{}
 	}
 
-	return res[0], res[1], err
+	return res[0], filepath.Clean(res[1]), err
 }
 
 func createConfigFile(dir, configFileName string) (err error) {
