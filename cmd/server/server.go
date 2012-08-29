@@ -163,9 +163,13 @@ func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
 		return
 	}
 
+	debug("TCP DIAL DONE\n")
+
 	encod := gob.NewEncoder(connTCPS)
 
 	cosmofs.SendPeer(encod)
+
+	debug("PEER SENT\n")
 
 	// Send the number of shared directories
 	err = encod.Encode(cosmofs.Table)
@@ -173,6 +177,8 @@ func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
 	if err != nil {
 		log.Fatal("Error sending shared Table: ", err)
 	}
+
+	debug("FINALIZING UDP CONN\n")
 
 	ch <- 1
 }
@@ -233,8 +239,8 @@ func main () {
 
 	for {
 		go handleUDPPetition(lnUDP, ch)
-		<-ch
 		go handleTCPPetition(lnTCP, ch)
+		<-ch
 		<-ch
 	}
 }
