@@ -22,9 +22,11 @@ along with Cosmofs.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"bufio"
 	"cosmofs"
 	"encoding/gob"
 	"flag"
+	"io"
 	"log"
 	"net"
 	"strings"
@@ -42,49 +44,66 @@ func debug (format string, v ...interface{}) {
 	}
 }
 
-/*func listDirectories() {
-	fmt.Printf("List directories\n")
-	
-	_, err = conn.Write([]byte("List Directories\n"))
-
-	if err != nil {
-		log.Fatalf("Error: %s\n", err)
-	}
-
-	decod := gob.NewDecoder(conn)
-	err = decod.Decode(&cosmofs.Table)
-
-	if err != nil {
-		log.Fatal("Error decoding table: ", err)
-	}
-
+func listDirectories(conn *net.TCPConn) {
 	dirs, err := cosmofs.Table.ListAllDirs()
 
 	if err != nil {
 		log.Printf("Error reading dirs %s", err)
 	}
 
-	for _, v := range dirs {
-		fmt.Println(v)
+	encod := gob.NewEncoder(conn)
+
+	encod.Encode(dirs)
+}
+
+func handleLocalPetition (conn *net.TCPConn) {
+	defer conn.Close()
+
+	debug("LOCAL PETITION")
+
+	reader := bufio.NewReader(conn)
+
+	line, err := reader.ReadString('\n')
+
+	if err != nil && err != io.EOF {
+		debug("Error reading connection: %s", err)
+		return
 	}
-}*/
+
+	line = strings.TrimRight(line, "\n")
+
+	// Listing directories
+	switch line {
+		case "List Directories":
+			debug("List directories from: %s\n", conn.RemoteAddr())
+			debug("Table is now: %v\n", cosmofs.Table)
+			listDirectories(conn)
+	}
+}
 
 // Handles petitions from the peers.
-func handleTCPPetition (lnTCP *net.TCPListener, ch chan int) {
+func handleTCPPetition (lnTCP *net.TCPListener) {
 	debug("WAITING FOR TCP CONN\n")
 
 	conn, err := lnTCP.AcceptTCP()
 
 	if err != nil {
 		debug("Error: %s\n", err)
+		go handleTCPPetition(lnTCP)
+		return
+	}
+
+	remIP := strings.Split(conn.RemoteAddr().String(), ":")
+
+	if strings.EqualFold(remIP[0], "127.0.0.1") {
+		go handleLocalPetition(conn)
+		go handleTCPPetition(lnTCP)
 		return
 	}
 
 	defer conn.Close()
 
 	debug("Connection made from: %s\n", conn.RemoteAddr())
-
-	remIP := strings.Split(conn.RemoteAddr().String(), ":")
 
 	connTCPS, err := net.DialTCP("tcp", nil, &net.TCPAddr{
 		IP:		net.ParseIP(remIP[0]),
@@ -93,6 +112,7 @@ func handleTCPPetition (lnTCP *net.TCPListener, ch chan int) {
 
 	if err != nil {
 		log.Fatalf("Error: %s\n", err)
+		go handleTCPPetition(lnTCP)
 		return
 	}
 
@@ -121,32 +141,7 @@ func handleTCPPetition (lnTCP *net.TCPListener, ch chan int) {
 
 	debug("LISTA DE DIRECTORIOS: %v\n", cosmofs.Table)
 
-	ch <- 1
-
-	/*reader := bufio.NewReader(conn)
-
-	line, err := reader.ReadString('\n')
-
-	if err != nil && err != io.EOF {
-		debug("Error reading connection: %s", err)
-		return
-	}
-
-	line = strings.TrimRight(line, "\n")
-
-	// Listing directories
-	switch line {
-		case "List Directories":
-			debug("List directories from: %s\n", conn.RemoteAddr())
-
-			encod := gob.NewEncoder(conn)
-			// Send the number of shared directories
-			err = encod.Encode(cosmofs.Table)
-
-			if err != nil {
-				log.Fatal("Error sending shared Table: ", err)
-			}
-	}*/
+	go handleTCPPetition(lnTCP)
 }
 
 func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
@@ -165,14 +160,8 @@ func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
 
 	if strings.EqualFold(remIP[0], locIP[0]) {
 		ch <- 1
-		ch <- 1
 		return
 	}
-
-	/*if !bytes.HasPrefix(data, []byte("CosmoFS conn")) {
-		debug("Error in protocol")
-		return
-	}*/
 
 	_, remoteIP, err = lnUDP.ReadFromUDP(data)
 
@@ -257,12 +246,6 @@ func main () {
 
 	log.Printf("My IP: %v\n", myIP)
 
-	/*_, err = conn.Write([]byte("CosmoFS conn\n"))
-
-	if err != nil {
-		log.Fatalf("Error: %s\n", err)
-	}*/
-
 	_, err = conn.Write([]byte(cosmofs.MyPublicPeer.ID))
 
 	if err != nil {
@@ -273,10 +256,10 @@ func main () {
 
 	ch := make(chan int, 1)
 
+	go handleTCPPetition(lnTCP)
+
 	for {
 		go handleUDPPetition(lnUDP, ch)
-		go handleTCPPetition(lnTCP, ch)
-		<-ch
 		<-ch
 	}
 }

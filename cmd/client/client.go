@@ -22,13 +22,11 @@ along with Cosmofs.  If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"cosmofs"
 	"encoding/gob"
 	"flag"
 	"fmt"
 	"log"
 	"net"
-	"strings"
 )
 
 var (
@@ -50,6 +48,18 @@ func debug (format string, v ...interface{}) {
 func main () {
 	flag.Parse()
 
+	conn, err := net.DialTCP("tcp", nil, &net.TCPAddr{
+		IP:		net.IPv4(127,0,0,1),
+		Port:	5453,
+	})
+
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+		return
+	}
+
+	defer conn.Close()
+
 	if *list_dirs {
 		fmt.Printf("List directories\n")
 		//fmt.Fprintf(conn, "List Directories\n")
@@ -60,17 +70,10 @@ func main () {
 		}
 
 		decod := gob.NewDecoder(conn)
-		err = decod.Decode(&cosmofs.Table)
 
-		if err != nil {
-			log.Fatal("Error decoding table: ", err)
-		}
+		var dirs []string
 
-		dirs, err := cosmofs.Table.ListAllDirs()
-
-		if err != nil {
-			log.Printf("Error reading dirs %s", err)
-		}
+		decod.Decode(&dirs)
 
 		for _, v := range dirs {
 			fmt.Println(v)
