@@ -73,6 +73,8 @@ func debug (format string, v ...interface{}) {
 
 // Handles petitions from the peers.
 func handleTCPPetition (lnTCP *net.TCPListener, ch chan int) {
+	debug("WAITING FOR TCP CONN\n")
+
 	conn, err := lnTCP.AcceptTCP()
 
 	if err != nil {
