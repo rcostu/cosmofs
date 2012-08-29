@@ -72,7 +72,14 @@ func debug (format string, v ...interface{}) {
 }*/
 
 // Handles petitions from the peers.
-func handlePetition (conn net.Conn) {
+func handleTCPPetition (lnTCP *net.TCPListener, ch chan int) {
+	conn, err := lnTCP.AcceptTCP()
+
+	if err != nil {
+		debug("Error: %s\n", err)
+		return
+	}
+
 	debug("Connection made from: %s\n", conn.RemoteAddr())
 
 	defer conn.Close()
@@ -88,6 +95,8 @@ func handlePetition (conn net.Conn) {
 	cosmofs.Table.ReceiveAndMergeTable(decod)
 
 	debug("LISTA DE DIRECTORIOS: %v\n", cosmofs.Table)
+
+	ch <- 1
 
 	/*reader := bufio.NewReader(conn)
 
@@ -113,6 +122,59 @@ func handlePetition (conn net.Conn) {
 				log.Fatal("Error sending shared Table: ", err)
 			}
 	}*/
+}
+
+func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
+	data := make([]byte, 4096)
+	_, remoteIP, err := lnUDP.ReadFromUDP(data)
+
+	if err != nil {
+		debug("Error: %s\n", err)
+		return
+	}
+
+	if !bytes.HasPrefix(data, []byte("CosmoFS conn")) {
+		debug("Error in protocol")
+		return
+	}
+
+	_, remoteIP, err = lnUDP.ReadFromUDP(data)
+
+	if err != nil {
+		debug("Error: %s\n", err)
+		return
+	}
+
+	remIP := strings.Split(remoteIP.String(), ":")
+
+	cosmofs.ConnectedPeer(string(data), remIP[0])
+
+	log.Printf("CONNECTED: %v\n", cosmofs.ConnectedPeers)
+
+	log.Printf("FINAL IP: %v\n", net.ParseIP(remIP[0]))
+
+	connTCPS, err := net.DialTCP("tcp", nil, &net.TCPAddr{
+		IP:		net.ParseIP(remIP[0]),
+		Port:	5453,
+	})
+
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+		return
+	}
+
+	encod := gob.NewEncoder(connTCPS)
+
+	cosmofs.SendPeer(encod)
+
+	// Send the number of shared directories
+	err = encod.Encode(cosmofs.Table)
+
+	if err != nil {
+		log.Fatal("Error sending shared Table: ", err)
+	}
+
+	ch <- 1
 }
 
 func main () {
@@ -167,63 +229,12 @@ func main () {
 
 	conn.Close()
 
+	ch := make(chan int, 1)
+
 	for {
-		data := make([]byte, 4096)
-		_, remoteIP, err := lnUDP.ReadFromUDP(data)
-
-		if err != nil {
-			debug("Error: %s\n", err)
-			continue
-		}
-
-		if !bytes.HasPrefix(data, []byte("CosmoFS conn")) {
-			debug("Error in protocol")
-			continue
-		}
-
-		_, remoteIP, err = lnUDP.ReadFromUDP(data)
-
-		if err != nil {
-			debug("Error: %s\n", err)
-			continue
-		}
-
-		remIP := strings.Split(remoteIP.String(), ":")
-
-		cosmofs.ConnectedPeer(string(data), remIP[0])
-
-		log.Printf("CONNECTED: %v\n", cosmofs.ConnectedPeers)
-
-		log.Printf("FINAL IP: %v\n", net.ParseIP(remIP[0]))
-
-		connTCPS, err := net.DialTCP("tcp", nil, &net.TCPAddr{
-			IP:		net.ParseIP(remIP[0]),
-			Port:	5453,
-		})
-
-		if err != nil {
-			log.Fatalf("Error: %s\n", err)
-			return
-		}
-
-		encod := gob.NewEncoder(connTCPS)
-
-		cosmofs.SendPeer(encod)
-
-		// Send the number of shared directories
-		err = encod.Encode(cosmofs.Table)
-
-		if err != nil {
-			log.Fatal("Error sending shared Table: ", err)
-		}
-
-		connTCPR, err := lnTCP.AcceptTCP()
-
-		if err != nil {
-			debug("Error: %s\n", err)
-			continue
-		}
-
-		go handlePetition(connTCPR)
+		go handleUDPPetition(lnUDP, ch)
+		<-ch
+		go handleTCPPetition(lnTCP, ch)
+		<-ch
 	}
 }

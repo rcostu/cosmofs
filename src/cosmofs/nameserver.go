@@ -78,8 +78,6 @@ func init() {
 
 	myID = string(id)
 
-    log.Println(myID)
-
 	// Create a new user in the table
 	// TODO: Decode and create correct ID
 	err := Table.AddID(myID)
@@ -359,15 +357,15 @@ func (t IDTable) ReceiveAndMergeTable (decod *gob.Decoder) {
 
 	for k, v := range recvTable {
 		for d, files := range v {
-			log.Printf("K: %v, D: %v\n", k, d)
 			if _, ok := t[k][d]; !ok {
-				//t.AddDir(k,d,filepath.Base(d),false)
 				t.AddID(k)
 				t[k][d] = files
-				log.Printf("Added dir %v from %v\n", v, k)
+				log.Printf("Added dir %v from %v\n", d, k)
 			}
 		}
 	}
+
+	encodeConfigFiles()
 }
 
 func checkID (id string) (err error) {
@@ -444,16 +442,49 @@ func decodeConfigFile(configFileName string) (err error){
 	return err
 }
 
-func encodeConfigFile(configFileName string) (err error){
-	_, err = os.Lstat(configFileName)
+func encodeConfigFiles() (err error){
+	sharedDirList := filepath.SplitList(*Cosmofsout)
 
-	if err == nil {
-		err = os.Remove(configFileName)
+	// Shared directories are initialized
+	for _, dir := range sharedDirList {
+		dir = filepath.Clean(dir)
+
+		// Check wether we can read the current directory
+		fi, err := os.Lstat(dir);
+
 		if err != nil {
-			log.Fatal("Error re-generating config files.")
+			continue
+		}
+
+		// If it is a directory, look for the config file and decode it, or
+		// generate it if it does not already exists.
+		if fi.IsDir() {
+			configFileName := filepath.Join(dir, COSMOFSCONFIGFILE)
+
+			_, err := os.Lstat(configFileName)
+
+			if err == nil {
+				err := os.Remove(configFileName)
+				if err != nil {
+					log.Fatal("Error re-generating config files.")
+				}
+			}
+
+			err = createConfigFile(dir, configFileName)
+
+			if err != nil {
+				log.Printf("Error creating config file: %s", err)
+				continue
+			}
+
+			// Decode the config file and update data structures.
+			err = decodeConfigFile(configFileName)
+			if err != nil {
+				log.Printf("Error decoding config file: %s", err)
+				continue
+			}
 		}
 	}
-
 
 	return err
 }
