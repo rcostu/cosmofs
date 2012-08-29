@@ -31,19 +31,23 @@ import (
 
 var (
 	verbose *bool = flag.Bool("v", false, "Verbose mode")
+
 	list_dirs *bool = flag.Bool("dirs", false, "List directories")
 	list_dir_id *string = flag.String("dirID", "", "List directories for ID")
 	list_dir *string = flag.String("dir", "", "List a dir")
 
-	list_ids *bool = flag.Bool("ids", false, "List all IDs")
+	list_known_ids *bool = flag.Bool("knownIDs", false, "List all known IDs")
+	list_connected_ids *bool = flag.Bool("connIDs", false, "List all connected IDs")
 
 	search *string = flag.String("s", "", "Search")
 	search_dir *string = flag.String("sDir", "", "Search directory")
 	search_file *string = flag.String("sFile", "", "Search File")
+
+	open_file *string = flag.String("file", "", "Open File")
 )
 
 const (
-	PORT string = "5453"
+	PORT int = 5453
 )
 
 func debug (format string, v ...interface{}) {
@@ -57,7 +61,7 @@ func main () {
 
 	conn, err := net.DialTCP("tcp", nil, &net.TCPAddr{
 		IP:		net.IPv4(127,0,0,1),
-		Port:	5453,
+		Port:	PORT,
 	})
 
 	if err != nil {
@@ -87,9 +91,9 @@ func main () {
 		}
 	}
 
-	if *list_ids {
-		fmt.Printf("List IDs\n")
-		_, err = conn.Write([]byte("List IDs\n"))
+	if *list_known_ids {
+		fmt.Printf("List Known IDs\n")
+		_, err = conn.Write([]byte("List Known IDs\n"))
 
 		if err != nil {
 			log.Fatalf("Error: %s\n", err)
@@ -101,6 +105,27 @@ func main () {
 
 		for _, v := range ids {
 			fmt.Println(v)
+		}
+	}
+
+	if *list_connected_ids {
+		fmt.Printf("List connected IDs\n")
+		_, err = conn.Write([]byte("List Connected IDs\n"))
+
+		if err != nil {
+			log.Fatalf("Error: %s\n", err)
+		}
+
+		var ids map[string]string
+
+		decod.Decode(&ids)
+
+		for k, v := range ids {
+			fmt.Println(k+" - "+v)
+		}
+
+		if ids == nil {
+			fmt.Printf("There are no IDs connected\n")
 		}
 	}
 
@@ -244,4 +269,19 @@ func main () {
 		}
 	}
 
+	if *open_file != "" {
+		fmt.Printf("Opening file %s\n", *open_file)
+
+		_, err = conn.Write([]byte("Open File\n"))
+
+		if err!= nil {
+			log.Fatalf("Error: %s\n", err)
+		}
+
+		_, err = conn.Write([]byte(*open_file+"\n"))
+
+		if err != nil {
+			log.Fatalf("Error: %s\n", err)
+		}
+	}
 }

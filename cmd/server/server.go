@@ -29,6 +29,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"path/filepath"
 	"strings"
 )
 
@@ -36,6 +37,10 @@ var (
 	// Flags
 	verbose *bool = flag.Bool("v", false, "Verbose output ON")
 	myIP net.Addr
+)
+
+const (
+	PORT int = 5453
 )
 
 func debug (format string, v ...interface{}) {
@@ -56,7 +61,7 @@ func listDirectories(conn *net.TCPConn) {
 	encod.Encode(dirs)
 }
 
-func listIDs(conn *net.TCPConn) {
+func listKnownIDs(conn *net.TCPConn) {
 	ids, err := cosmofs.Table.ListIDs()
 
 	if err != nil {
@@ -66,6 +71,12 @@ func listIDs(conn *net.TCPConn) {
 	encod := gob.NewEncoder(conn)
 
 	encod.Encode(ids)
+}
+
+func listConnectedIDs(conn *net.TCPConn) {
+	encod := gob.NewEncoder(conn)
+
+	encod.Encode(cosmofs.ConnectedPeers)
 }
 
 func listDirectoriesID(conn *net.TCPConn, reader *bufio.Reader) {
@@ -185,6 +196,23 @@ func searchFile(conn *net.TCPConn, reader *bufio.Reader) {
 	encod.Encode(result)
 }
 
+func openFile(conn *net.TCPConn, reader *bufio.Reader) {
+	file, err := reader.ReadString('\n')
+
+	if err != nil && err != io.EOF {
+		debug("Error reading connection: %s", err)
+		return
+	}
+
+	file = strings.TrimRight(file, "\n")
+
+	_, dir, _ := cosmofs.SplitPath(file)
+
+	fileName := filepath.Base(dir)
+
+	log.Printf("Opening File %s from %s\n", fileName, conn.RemoteAddr())
+}
+
 func handleLocalPetition (conn *net.TCPConn) {
 	defer conn.Close()
 
@@ -213,9 +241,12 @@ func handleLocalPetition (conn *net.TCPConn) {
 		case "List Directory":
 			debug("List Directory")
 			listDirectory(conn, reader)
-		case "List IDs":
-			debug("List IDs from: %s\n", conn.RemoteAddr())
-			listIDs(conn)
+		case "List Known IDs":
+			debug("List Known IDs from: %s\n", conn.RemoteAddr())
+			listKnownIDs(conn)
+		case "List Connected IDs":
+			debug("List Connected IDs from: %s\n", conn.RemoteAddr())
+			listConnectedIDs(conn)
 		case "Search":
 			debug("Search from %s\n", conn.RemoteAddr())
 			search(conn, reader)
@@ -225,6 +256,9 @@ func handleLocalPetition (conn *net.TCPConn) {
 		case "Search File":
 			debug("Search File from %s\n", conn.RemoteAddr())
 			searchFile(conn, reader)
+		case "Open File":
+			debug("Open File from %s\n", conn.RemoteAddr())
+			openFile(conn, reader)
 	}
 }
 
@@ -254,7 +288,7 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 
 	connTCPS, err := net.DialTCP("tcp", nil, &net.TCPAddr{
 		IP:		net.ParseIP(remIP[0]),
-		Port:	5453,
+		Port:	PORT,
 	})
 
 	if err != nil {
@@ -288,7 +322,7 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 
 	connTCPS.Close()
 
-	//go handleTCPPetition(lnTCP)
+	go handleTCPPetition(lnTCP)
 }
 
 func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
@@ -305,6 +339,10 @@ func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
 
 	log.Printf("REM IP: %v, LOCAL IP: %v\n", remIP[0], locIP[0])
 
+	cosmofs.ConnectedPeer(string(data), remIP[0])
+
+	log.Printf("CONNECTED: %v\n", cosmofs.ConnectedPeers)
+
 	if strings.EqualFold(remIP[0], locIP[0]) {
 		ch <- 1
 		return
@@ -317,15 +355,11 @@ func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
 		return
 	}
 
-	cosmofs.ConnectedPeer(string(data), remIP[0])
-
-	log.Printf("CONNECTED: %v\n", cosmofs.ConnectedPeers)
-
 	log.Printf("FINAL IP: %v\n", net.ParseIP(remIP[0]))
 
 	connTCPS, err := net.DialTCP("tcp", nil, &net.TCPAddr{
 		IP:		net.ParseIP(remIP[0]),
-		Port:	5453,
+		Port:	PORT,
 	})
 
 	if err != nil {
@@ -359,7 +393,7 @@ func main () {
 	// Leave the process listening for other peers
 	lnUDP, err := net.ListenUDP("udp", &net.UDPAddr{
 		IP:		net.IPv4zero,
-		Port:	5453,
+		Port:	PORT,
 	})
 
 	if err != nil {
@@ -369,7 +403,7 @@ func main () {
 	//Leave the process listening for other peers
 	lnTCP, err := net.ListenTCP("tcp", &net.TCPAddr{
 		IP:		net.IPv4zero,
-		Port:	5453,
+		Port:	PORT,
 	})
 
 	if err != nil {
@@ -381,7 +415,7 @@ func main () {
 	// network.
 	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
 		IP:		net.IPv4(255,255,255,255),
-		Port:	5453,
+		Port:	PORT,
 	})
 
 	if err != nil {
