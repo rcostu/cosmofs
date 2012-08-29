@@ -164,14 +164,18 @@ func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
 	remIP := strings.Split(remoteIP.String(), ":")
 	locIP := strings.Split(myIP.String(), ":")
 
+	log.Printf("REM IP: %v, LOCAL IP: %v\n", remIP[0], locIP[0])
+
 	if strings.EqualFold(remIP[0], locIP[0]) {
+		ch <- 1
+		ch <- 1
 		return
 	}
 
-	if !bytes.HasPrefix(data, []byte("CosmoFS conn")) {
+	/*if !bytes.HasPrefix(data, []byte("CosmoFS conn")) {
 		debug("Error in protocol")
 		return
-	}
+	}*/
 
 	_, remoteIP, err = lnUDP.ReadFromUDP(data)
 
@@ -256,11 +260,11 @@ func main () {
 
 	log.Printf("My IP: %v\n", myIP)
 
-	_, err = conn.Write([]byte("CosmoFS conn\n"))
+	/*_, err = conn.Write([]byte("CosmoFS conn\n"))
 
 	if err != nil {
 		log.Fatalf("Error: %s\n", err)
-	}
+	}*/
 
 	_, err = conn.Write([]byte(cosmofs.MyPublicPeer.ID))
 
