@@ -82,9 +82,34 @@ func handleTCPPetition (lnTCP *net.TCPListener, ch chan int) {
 		return
 	}
 
+	defer conn.Close()
+
 	debug("Connection made from: %s\n", conn.RemoteAddr())
 
-	defer conn.Close()
+	remIP := strings.Split(conn.RemoteAddr().String(), ":")
+
+	connTCPS, err := net.DialTCP("tcp", nil, &net.TCPAddr{
+		IP:		net.ParseIP(remIP[0]),
+		Port:	5453,
+	})
+
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+		return
+	}
+
+	encod := gob.NewEncoder(connTCPS)
+
+	cosmofs.SendPeer(encod)
+
+	// Send the number of shared directories
+	err = encod.Encode(cosmofs.Table)
+
+	if err != nil {
+		log.Fatal("Error sending shared Table: ", err)
+	}
+
+	defer connTCPS.Close()
 
 	debug("List of Peers: %v\n", cosmofs.PeerList)
 
