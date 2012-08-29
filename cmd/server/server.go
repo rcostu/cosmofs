@@ -274,8 +274,6 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 		log.Fatal("Error sending shared Table: ", err)
 	}
 
-	defer connTCPS.Close()
-
 	debug("List of Peers: %v\n", cosmofs.PeerList)
 
 	decod := gob.NewDecoder(conn)
@@ -288,7 +286,9 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 
 	debug("LISTA DE DIRECTORIOS: %v\n", cosmofs.Table)
 
-	go handleTCPPetition(lnTCP)
+	connTCPS.Close()
+
+	//go handleTCPPetition(lnTCP)
 }
 
 func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
