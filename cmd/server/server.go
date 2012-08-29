@@ -36,6 +36,7 @@ import (
 var (
 	// Flags
 	verbose *bool = flag.Bool("v", false, "Verbose output ON")
+	myIP net.Addr
 )
 
 func debug (format string, v ...interface{}) {
@@ -160,6 +161,13 @@ func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
 		return
 	}
 
+	remIP := strings.Split(remoteIP.String(), ":")
+	locIP := strings.Split(myIP.String(), ":")
+
+	if strings.EqualFold(remIP[0], locIP[0]) {
+		return
+	}
+
 	if !bytes.HasPrefix(data, []byte("CosmoFS conn")) {
 		debug("Error in protocol")
 		return
@@ -171,8 +179,6 @@ func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
 		debug("Error: %s\n", err)
 		return
 	}
-
-	remIP := strings.Split(remoteIP.String(), ":")
 
 	cosmofs.ConnectedPeer(string(data), remIP[0])
 
@@ -246,7 +252,9 @@ func main () {
 		return
 	}
 
-	log.Printf("My IP: %v\n", conn.LocalAddr())
+	myIP = conn.LocalAddr()
+
+	log.Printf("My IP: %v\n", myIP)
 
 	_, err = conn.Write([]byte("CosmoFS conn\n"))
 
