@@ -28,7 +28,7 @@ type chunk struct {
 }
 
 type File struct {
-	localPath string
+	LocalPath string
 	GlobalPath string
 	Filename string
 	Size int64
