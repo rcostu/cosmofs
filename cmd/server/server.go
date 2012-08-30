@@ -338,8 +338,8 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 	remIP := strings.Split(conn.RemoteAddr().String(), ":")
 
 	if strings.EqualFold(remIP[0], "127.0.0.1") {
-		go handleLocalPetition(conn)
 		go handleTCPPetition(lnTCP)
+		go handleLocalPetition(conn)
 		return
 	}
 
@@ -386,13 +386,17 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 
 			decod := gob.NewDecoder(conn)
 
-			cosmofs.ReceivePeer(decod)
+			id := cosmofs.ReceivePeer(decod)
+
+			cosmofs.ConnectedPeer(id, remIP[0])
+
+			log.Printf("CONNECTED: %v\n", cosmofs.ConnectedPeers)
 
 			debug("List of Peers: %v\n", cosmofs.PeerList)
 
 			cosmofs.Table.ReceiveAndMergeTable(decod)
 
-			debug("LISTA DE DIRECTORIOS: %v\n", cosmofs.Table)
+			cosmofs.PrintTable()
 
 			connTCPS.Close()
 
