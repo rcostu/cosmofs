@@ -375,10 +375,54 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 				return
 			}
 
-			_, err = connTCPS.Write([]byte("General TCP\n"))
+			_, err = connTCPS.Write([]byte("General TCP Answer\n"))
 
 			if err != nil {
 				log.Fatalf("Error: %s\n", err)
+			}
+
+			encod := gob.NewEncoder(connTCPS)
+
+			cosmofs.SendPeer(encod)
+
+			// Send the number of shared directories
+			err = encod.Encode(cosmofs.Table)
+
+			if err != nil {
+				log.Fatal("Error sending shared Table: ", err)
+			}
+
+			debug("List of Peers: %v\n", cosmofs.PeerList)
+
+			decod := gob.NewDecoder(conn)
+
+			id := cosmofs.ReceivePeer(decod)
+
+			cosmofs.ConnectedPeer(id, remIP[0])
+
+			log.Printf("CONNECTED: %v\n", cosmofs.ConnectedPeers)
+
+			debug("List of Peers: %v\n", cosmofs.PeerList)
+
+			cosmofs.Table.ReceiveAndMergeTable(decod)
+
+			cosmofs.PrintTable()
+
+			connTCPS.Close()
+
+			go handleTCPPetition(lnTCP)
+
+		case "General TCP Answer":
+			debug("GENERAL TCP CONNECTION\n")
+			connTCPS, err := net.DialTCP("tcp", nil, &net.TCPAddr{
+				IP:		net.ParseIP(remIP[0]),
+				Port:	PORT,
+			})
+
+			if err != nil {
+				log.Fatalf("Error: %s\n", err)
+				go handleTCPPetition(lnTCP)
+				return
 			}
 
 			encod := gob.NewEncoder(connTCPS)
