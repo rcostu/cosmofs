@@ -42,6 +42,7 @@ var (
 
 const (
 	PORT int = 5453
+	LOCALPORT int = 5454 
 )
 
 func debug (format string, v ...interface{}) {
@@ -263,6 +264,8 @@ func openFile(conn *net.TCPConn, reader *bufio.Reader) {
 
 			decod := gob.NewDecoder(connTCPS)
 			decod.Decode(&content)
+
+			connTCPS.Close()
 
 			encod := gob.NewEncoder(conn)
 
@@ -508,6 +511,8 @@ func handleUDPPetition (lnUDP *net.UDPConn, ch chan int) {
 	if err != nil {
 		log.Fatal("Error sending shared Table: ", err)
 	}
+
+	connTCPS.Close()
 
 	debug("FINALIZING UDP CONN\n")
 
