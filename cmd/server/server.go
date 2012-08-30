@@ -363,6 +363,7 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 
  	switch line {
 		case "General TCP":
+			debug("GENERAL TCP CONNECTION\n")
 			connTCPS, err := net.DialTCP("tcp", nil, &net.TCPAddr{
 				IP:		net.ParseIP(remIP[0]),
 				Port:	PORT,
@@ -406,6 +407,7 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 			go handleTCPPetition(lnTCP)
 
 		case "Open File":
+			debug("OPEN FILE CONNECTION\n")
 			file, err := reader.ReadString('\n')
 
 			if err != nil && err != io.EOF {
