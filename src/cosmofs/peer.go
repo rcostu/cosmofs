@@ -128,16 +128,19 @@ func SendPeer(encod *gob.Encoder) {
 	}
 }
 
-func ReceivePeer (decod *gob.Decoder) {
+func ReceivePeer (decod *gob.Decoder) (string){
 	var receivedPeer Peer
 
 	err := decod.Decode(&receivedPeer)
 
 	if err != nil {
 		log.Fatal("Error decoding received Peer: ", err)
+		return ""
 	}
 
 	StorePeer(&receivedPeer)
+
+	return receivedPeer.ID
 }
 
 func ConnectedPeer(id string, addr string) {
