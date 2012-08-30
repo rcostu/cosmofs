@@ -186,9 +186,9 @@ func (t IDTable) AddDir (id, dir, baseDir string, recursive bool) (err error) {
 		for _, ent := range fi {
 			if strings.HasPrefix(ent.Name(), ".") {
 				continue
-			}
+			}	
 			files = append(files, &File{
-				localPath: filepath.Clean(dir),
+				LocalPath: filepath.Clean(dir),
 				GlobalPath: filepath.Join(id,baseDir,ent.Name()),
 				Filename: ent.Name(),
 				Size: ent.Size(),
@@ -199,7 +199,6 @@ func (t IDTable) AddDir (id, dir, baseDir string, recursive bool) (err error) {
 				NumChunks: 1,
 				Chunks: nil,
 			})
-
 			if recursive && ent.IsDir() {
 				t.AddDir(id, filepath.Join(dir, ent.Name()),
 				filepath.Join(baseDir, ent.Name()), recursive)
@@ -491,5 +490,18 @@ func encodeConfigFiles() (err error){
 	}
 
 	return err
+}
+
+func PrintTable() {
+	for k, v := range Table {
+		log.Printf("- %v\n", k)
+		for kk, vv := range v {
+			log.Printf("-- %v\n", kk)
+			for _, vvv := range vv {
+				log.Printf("--- %v : %v : %v\n", vvv.Filename, vvv.GlobalPath,
+				vvv.LocalPath)
+			}
+		}
+	}
 }
 
