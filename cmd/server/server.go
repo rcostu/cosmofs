@@ -375,6 +375,12 @@ func handleTCPPetition (lnTCP *net.TCPListener) {
 				return
 			}
 
+			_, err = connTCPS.Write([]byte("General TCP\n"))
+
+			if err != nil {
+				log.Fatalf("Error: %s\n", err)
+			}
+
 			encod := gob.NewEncoder(connTCPS)
 
 			cosmofs.SendPeer(encod)
