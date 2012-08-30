@@ -283,5 +283,16 @@ func main () {
 		if err != nil {
 			log.Fatalf("Error: %s\n", err)
 		}
+
+		var file []byte
+
+		decod.Decode(&file)
+
+		if file == nil {
+			fmt.Printf("It wasn't possible to open %v\n", *open_file)
+			return
+		}
+
+		fmt.Printf("%s", string(file))
 	}
 }
